@@ -1,0 +1,37 @@
+@import './variables.css';
+@import './animations.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-cream font-sans text-charcoal antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-serif;
+  }
+
+  /* Brand-coloured focus ring, visible on both cream and navy surfaces. */
+  :focus-visible {
+    outline: 2px solid var(--tal-sky-dark);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+}
+
+@layer components {
+  /* Guarantees the logo's minimum clear space in a header or footer. */
+  .tal-logo-slot {
+    padding: calc(var(--tal-logo-clearspace) * 0.5em);
+  }
+}

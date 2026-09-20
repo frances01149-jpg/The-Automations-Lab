@@ -1,0 +1,22 @@
+/**
+ * Brand tokens as CSS custom properties.
+ * Mirrors tailwind.config.js and src/components/Brand/brandTokens.js.
+ */
+:root {
+  --tal-navy: #1a3a52;
+  --tal-navy-deep: #142c3f;
+  --tal-sky: #6b9ec9;
+  /* Text-safe tints: 5.18:1 on cream, 5.56:1 on navy. */
+  --tal-sky-dark: #3f6d92;
+  --tal-sky-light: #94b6ce;
+  --tal-cream: #f9f8f5;
+  --tal-cream-dark: #efeee9;
+  --tal-charcoal: #3a3a3a;
+  --tal-charcoal-muted: #8a8a8a;
+
+  --tal-font-serif: 'Cormorant Garamond', Georgia, serif;
+  --tal-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Minimum clear space around the logo, expressed in mark-heights. */
+  --tal-logo-clearspace: 0.5;
+}

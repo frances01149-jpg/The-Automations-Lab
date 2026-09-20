@@ -1,0 +1,64 @@
+/**
+ * Logo motion.
+ *
+ * The mark animates only where it is the focus of the screen (hero, splash,
+ * loading) — never in the header, where a moving logo on every page is noise.
+ * All motion is transform/opacity only, so it stays on the compositor.
+ */
+
+@keyframes tal-node-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.82);
+  }
+}
+
+@keyframes tal-edge-draw {
+  from {
+    stroke-dashoffset: var(--tal-edge-length, 24);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.tal-logo-mark .tal-logo-nodes circle {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.tal-logo-mark.is-animated .tal-logo-nodes circle {
+  animation: tal-node-pulse 2.8s ease-in-out infinite;
+}
+
+/* Stagger the three nodes so the network reads as a signal travelling. */
+.tal-logo-mark.is-animated .tal-logo-nodes circle:nth-child(2) {
+  animation-delay: 0.45s;
+}
+.tal-logo-mark.is-animated .tal-logo-nodes circle:nth-child(3) {
+  animation-delay: 0.9s;
+}
+
+.tal-logo-mark.is-animated .tal-logo-network line {
+  stroke-dasharray: var(--tal-edge-length, 24);
+  animation: tal-edge-draw 1.4s ease-out both;
+}
+.tal-logo-mark.is-animated .tal-logo-network line:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.tal-logo-mark.is-animated .tal-logo-network line:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tal-logo-mark.is-animated .tal-logo-nodes circle,
+  .tal-logo-mark.is-animated .tal-logo-network line {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}

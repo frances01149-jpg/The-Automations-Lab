@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="64" viewBox="0 0 320 64" role="img" aria-label="The Automation Lab">
+  <title>The Automation Lab</title>
+  <g>
+    <path d="M15.4 44h33.2l3.3 5.1a6.2 6.2 0 0 1-5.2 9.6H17.3a6.2 6.2 0 0 1-5.2-9.6z" fill="#6b9ec9" opacity=".32"/>
+  <g stroke="#6b9ec9" stroke-width="2" stroke-linecap="round">
+    <line x1="32" y1="18.5" x2="23.5" y2="36"/>
+    <line x1="32" y1="18.5" x2="40.5" y2="36"/>
+    <line x1="23.5" y1="36" x2="40.5" y2="36"/>
+  </g>
+  <g fill="#6b9ec9">
+    <circle cx="32" cy="18.5" r="2.6"/>
+    <circle cx="23.5" cy="36" r="2.6"/>
+    <circle cx="40.5" cy="36" r="2.6"/>
+  </g>
+  <g fill="none" stroke="#f9f8f5" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M27 11v14.8L12.1 49.1a6.2 6.2 0 0 0 5.2 9.6h29.4a6.2 6.2 0 0 0 5.2-9.6L37 25.8V11"/>
+    <path d="M23 11h18"/>
+  </g>
+  </g>
+  <text x="80" y="32" font-family="'Cormorant Garamond', Georgia, serif" font-size="27" font-weight="500" fill="#f9f8f5" letter-spacing=".3">The Automation Lab</text>
+  <text x="81.5" y="48" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-size="7.5" font-weight="500" fill="#94b6ce" letter-spacing="2.4">AUTOMATE WITH INTENT</text>
+</svg>
