@@ -10,11 +10,11 @@ const NAV = [
 
 export default function Header() {
   return (
-    <header className="sticky top-0 z-50 border-b border-navy-100/70 bg-cream/85 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-navy-100 bg-cream/85 backdrop-blur-md">
       <div className="mx-auto flex h-20 max-w-6xl items-center justify-between px-5 sm:px-8">
         <Link to="/" className="tal-logo-slot -ml-1 shrink-0 rounded-sm">
           {/* Below `sm` the wordmark would crowd the nav, so the mark stands alone. */}
-          <Logo variant="mark" size="md" className="sm:hidden" />
+          <Logo variant="tile" size="sm" className="sm:hidden" />
           <Logo variant="lockup" size="sm" className="hidden sm:inline-flex" />
         </Link>
 
@@ -25,7 +25,7 @@ export default function Header() {
               to={to}
               className={({ isActive }) =>
                 `text-sm font-medium transition-colors duration-150 ${
-                  isActive ? 'text-navy' : 'text-charcoal-light hover:text-navy'
+                  isActive ? 'text-navy' : 'text-navy-700/70 hover:text-navy'
                 }`
               }
             >

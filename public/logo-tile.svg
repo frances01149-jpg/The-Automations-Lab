@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1744" height="1744" viewBox="0 0 1744 1744" role="img" aria-label="The Automation Lab">
+  <title>The Automation Lab</title>
+  <rect width="1744" height="1744" rx="374" fill="#142a5e"/>
+  <g transform="translate(245 128)">
+    <path d="M627 168L165.9 1240.5M627 168L1088.1 1240.5" fill="none" stroke="#8fa9ea" stroke-width="333" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M627 168L165.9 1240.5M627 168L1088.1 1240.5" fill="none" stroke="#f4f6ff" stroke-width="195" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="266" y="762" width="721" height="156" rx="78" fill="#8fa9ea"/>
+    <rect x="316" y="812" width="621" height="56" rx="28" fill="#142a5e"/>
+    <circle cx="627" cy="168" r="89" fill="#dce566"/><circle cx="627" cy="168" r="40" fill="#142a5e"/>
+    <circle cx="627" cy="840" r="55" fill="#dce566"/><circle cx="627" cy="840" r="24" fill="#142a5e"/>
+  </g>
+</svg>

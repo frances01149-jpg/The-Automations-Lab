@@ -3,20 +3,20 @@
  * Mirrors tailwind.config.js and src/components/Brand/brandTokens.js.
  */
 :root {
-  --tal-navy: #1a3a52;
-  --tal-navy-deep: #142c3f;
-  --tal-sky: #6b9ec9;
-  /* Text-safe tints: 5.18:1 on cream, 5.56:1 on navy. */
-  --tal-sky-dark: #3f6d92;
-  --tal-sky-light: #94b6ce;
-  --tal-cream: #f9f8f5;
-  --tal-cream-dark: #efeee9;
-  --tal-charcoal: #3a3a3a;
-  --tal-charcoal-muted: #8a8a8a;
+  --tal-navy: #142a5e;
+  --tal-navy-deep: #0d1c40;
+  --tal-periwinkle: #8fa9ea;
+  --tal-cornflower: #6682d5;
+  /* Text-safe cornflower: 5.02:1 on cream, where the brand step is only 3.52:1. */
+  --tal-cornflower-text: #4f68b8;
+  --tal-lime: #dce566;
+  --tal-ice: #f4f6ff;
+  --tal-cream: #fbfaf6;
+  --tal-hairline: #d9e2fc;
 
-  --tal-font-serif: 'Cormorant Garamond', Georgia, serif;
+  --tal-font-serif: 'PT Serif', Georgia, serif;
   --tal-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 
-  /* Minimum clear space around the logo, expressed in mark-heights. */
+  /* Minimum clear space around the logo, in mark-heights. */
   --tal-logo-clearspace: 0.5;
 }

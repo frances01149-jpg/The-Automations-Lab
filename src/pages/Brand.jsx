@@ -3,9 +3,9 @@ import { Logo, LogoMark, BRAND } from '@/components/Brand'
 function Section({ title, description, children }) {
   return (
     <section className="border-t border-navy-100 py-14">
-      <h2 className="font-serif text-3xl text-navy">{title}</h2>
+      <h2 className="font-serif text-3xl font-bold text-navy">{title}</h2>
       {description && (
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-charcoal-light">{description}</p>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-navy-700/75">{description}</p>
       )}
       <div className="mt-8">{children}</div>
     </section>
@@ -25,47 +25,49 @@ function Panel({ dark = false, className = '', children }) {
 }
 
 const SWATCHES = [
-  ['Navy', BRAND.navy, 'Primary. Shell of the mark, headlines, primary buttons.'],
-  ['Sky', BRAND.sky, 'Accent graphic only — the mark\u2019s network and liquid. Too light for text on either surface.'],
-  ['Sky dark', BRAND.skyDark, 'Accent text on light surfaces, and focus rings. 5.18:1 on cream.'],
-  ['Sky light', BRAND.skyLight, 'Accent text on navy. 5.56:1.'],
-  ['Cream', BRAND.cream, 'Surface. Page background, reversed logo.'],
-  ['Charcoal', BRAND.charcoal, 'Body copy. Never used inside the mark.'],
+  ['Navy', BRAND.navy, 'The tile, the wordmark, body copy, primary buttons.'],
+  ['Periwinkle', BRAND.periwinkle, 'The halo around the mark and the THE kicker. Accent text on navy only.'],
+  ['Cornflower', BRAND.cornflower, '“Lab” in the logotype and the rule dots.'],
+  ['Cornflower text', BRAND.cornflowerText, 'Accent text on light surfaces and focus rings. 5.02:1 on cream.'],
+  ['Lime', BRAND.lime, 'The two nodes. The only warm colour — never more than a detail.'],
+  ['Ice', BRAND.ice, 'The A’s body when it sits on navy.'],
+  ['Cream', BRAND.cream, 'The page surface.'],
+  ['Hairline', BRAND.hairline, 'The rule beneath the logotype.'],
 ]
 
 const DOWNLOADS = [
-  { file: 'logo.svg', use: 'Primary horizontal lockup, light surfaces' },
-  // The reversed lockup is cream-on-transparent, so its preview needs a navy
-  // chip behind it or it disappears against the row.
-  { file: 'logo-inverse.svg', use: 'Reversed lockup, navy or photographic surfaces', dark: true },
-  { file: 'logo-mark.svg', use: 'Isotype only, avatars and app icons' },
-  { file: 'favicon.svg', use: 'Heavier isotype, tuned for 16–32px' },
+  { file: 'logo.svg', use: 'Horizontal lockup, light surfaces' },
+  { file: 'logo-inverse.svg', use: 'Horizontal lockup reversed on navy', dark: true },
+  { file: 'logo-tile.svg', use: 'Navy app icon — avatars, app stores, favicons' },
+  { file: 'logo-mark.svg', use: 'The bare A, for inline and large-format use' },
+  { file: 'favicon.svg', use: 'The tile, which holds up at 16px where the bare A does not' },
 ]
 
 const MISUSE = [
-  'Do not recolour the mark outside the three approved tones.',
+  'Do not rebuild the A from a typeface — it is a drawn mark, not a letter.',
+  'Do not recolour the halo, the crossbar or the nodes.',
   'Do not stretch, skew or rotate the lockup — scale it proportionally.',
-  'Do not place the navy lockup on navy, or the inverse lockup on cream.',
-  'Do not add drop shadows, outlines, gradients or bevels to the mark.',
-  'Do not re-typeset the wordmark in another face, or re-space its letters.',
-  'Do not crop the flask, or separate the network from its shell.',
+  'Do not put the navy lockup on navy, or the reversed one on cream.',
+  'Do not set “Automation” and “Lab” in the same face — the contrast is the idea.',
+  'Do not drop the hairline and dots from the full lockup.',
 ]
 
 export default function Brand() {
   return (
     <main className="mx-auto max-w-5xl px-5 pb-24 sm:px-8">
       <header className="py-16">
-        <p className="font-sans text-xs font-semibold uppercase tracking-[0.32em] text-sky-dark">
+        <p className="font-sans text-xs font-semibold uppercase tracking-[0.32em] text-cornflower-text">
           Identity
         </p>
-        <h1 className="mt-4 font-serif text-5xl leading-tight text-navy sm:text-6xl">
+        <h1 className="mt-4 font-serif text-5xl font-bold leading-tight text-navy sm:text-6xl">
           The logo &amp; logotype
         </h1>
-        <p className="mt-5 max-w-2xl leading-relaxed text-charcoal-light">
-          The mark is an Erlenmeyer flask holding a three-node network suspended
-          above the liquid line: the lab that contains the process, and the
-          automation running inside it. The serif wordmark supplies the warmth
-          the navy palette deliberately withholds.
+        <p className="mt-5 max-w-2xl leading-relaxed text-navy-700/75">
+          The mark is an A built from two round-capped strokes, haloed in
+          periwinkle, with a node at the vertex and another on the crossbar —
+          the two points where a process branches and where it is measured. The
+          logotype pairs a bold serif against a bold sans, which is the whole
+          brand argument in two words: considered, and operational.
         </p>
       </header>
 
@@ -78,25 +80,26 @@ export default function Brand() {
             <Logo variant="lockup" size="lg" />
           </Panel>
           <Panel dark>
-            <Logo variant="lockup" size="lg" tone="inverse" />
+            <Logo variant="lockup" size="lg" tone="dark" />
           </Panel>
         </div>
       </Section>
 
       <Section
         title="Variants"
-        description="Four constructions cover every placement. Reach for the smallest one that still reads."
+        description="Five constructions cover every placement. Reach for the smallest one that still reads."
       >
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {[
             ['Lockup', <Logo key="a" variant="lockup" size="sm" />],
-            ['Stacked', <Logo key="b" variant="stacked" size="md" />],
-            ['Mark', <Logo key="c" variant="mark" size="lg" />],
-            ['Wordmark', <Logo key="d" variant="wordmark" size="sm" />],
+            ['Stacked', <Logo key="b" variant="stacked" size="sm" />],
+            ['Tile', <Logo key="c" variant="tile" size="lg" />],
+            ['Mark', <Logo key="d" variant="mark" size="lg" />],
+            ['Wordmark', <Logo key="e" variant="wordmark" size="md" />],
           ].map(([label, node]) => (
             <figure key={label} className="flex flex-col">
-              <Panel className="min-h-[10rem] flex-1">{node}</Panel>
-              <figcaption className="mt-3 text-center text-xs uppercase tracking-[0.2em] text-charcoal-muted">
+              <Panel className="min-h-[11rem] flex-1">{node}</Panel>
+              <figcaption className="mt-3 text-center text-xs uppercase tracking-[0.2em] text-navy-700/60">
                 {label}
               </figcaption>
             </figure>
@@ -106,16 +109,30 @@ export default function Brand() {
 
       <Section
         title="Scale"
-        description="The mark is drawn on a 64px grid and holds its silhouette down to 16px. Below 24px, use favicon.svg — its heavier strokes survive rasterisation."
+        description="The bare A holds down to about 24px. Below that the crossbar node closes up, so use the tile instead — its silhouette survives 16px."
       >
-        <Panel className="gap-10">
-          {[16, 24, 32, 48, 64, 96].map((s) => (
-            <div key={s} className="flex flex-col items-center gap-3">
-              <LogoMark size={s} />
-              <span className="text-[0.65rem] text-charcoal-muted">{s}px</span>
-            </div>
-          ))}
-        </Panel>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <figure>
+            <Panel className="gap-8">
+              {[20, 28, 40, 56, 80].map((s) => (
+                <LogoMark key={s} size={s} />
+              ))}
+            </Panel>
+            <figcaption className="mt-3 text-center text-xs uppercase tracking-[0.2em] text-navy-700/60">
+              Mark
+            </figcaption>
+          </figure>
+          <figure>
+            <Panel className="gap-8">
+              {[16, 24, 32, 48, 64].map((s) => (
+                <LogoMark key={s} size={s} tile />
+              ))}
+            </Panel>
+            <figcaption className="mt-3 text-center text-xs uppercase tracking-[0.2em] text-navy-700/60">
+              Tile
+            </figcaption>
+          </figure>
+        </div>
       </Section>
 
       <Section
@@ -123,7 +140,7 @@ export default function Brand() {
         description="Keep free space of at least half the mark's height on all four sides. Nothing — type, rules, image edges — enters that margin."
       >
         <Panel>
-          <div className="relative p-[28px] outline-dashed outline-1 outline-offset-0 outline-sky/50">
+          <div className="p-[26px] outline-dashed outline-1 outline-periwinkle">
             <Logo variant="lockup" size="md" />
           </div>
         </Panel>
@@ -131,25 +148,25 @@ export default function Brand() {
 
       <Section
         title="Motion"
-        description="The nodes pulse and the connectors draw in, but only where the logo is the subject of the screen — a hero, a splash, a loading state. Never in the header. The animation is suppressed entirely under prefers-reduced-motion."
+        description="The apex node pulses and the crossbar node answers half a beat later, so the mark reads as a signal passing through it. Only where the logo is the subject of the screen — never in the header. Suppressed entirely under prefers-reduced-motion."
       >
         <Panel dark>
-          <Logo variant="stacked" size="xl" tone="inverse" animated />
+          <Logo variant="stacked" size="md" tone="dark" animated />
         </Panel>
       </Section>
 
       <Section
         title="Palette"
-        description="Brand sky colours the mark's interior and nothing else. As text it fails WCAG AA on both cream (2.69:1) and navy (4.16:1), so accent type uses the two tinted variants instead."
+        description="Every value is sampled from the supplied artwork. Periwinkle and cornflower are logo colours first: as text on cream they measure 2.23:1 and 3.52:1, so accent copy uses the darker cornflower step instead."
       >
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {SWATCHES.map(([name, hex, use]) => (
             <div key={name} className="overflow-hidden rounded-xl border border-navy-100">
               <div className="h-24" style={{ background: hex }} />
               <div className="bg-white p-4">
-                <p className="font-serif text-lg text-navy">{name}</p>
-                <p className="font-mono text-xs uppercase text-charcoal-muted">{hex}</p>
-                <p className="mt-2 text-xs leading-relaxed text-charcoal-light">{use}</p>
+                <p className="font-serif text-lg font-bold text-navy">{name}</p>
+                <p className="font-mono text-xs uppercase text-navy-700/60">{hex}</p>
+                <p className="mt-2 text-xs leading-relaxed text-navy-700/75">{use}</p>
               </div>
             </div>
           ))}
@@ -164,18 +181,22 @@ export default function Brand() {
                 <a
                   href={`/${file}`}
                   download
-                  className="font-mono text-sm text-navy underline decoration-sky underline-offset-4 hover:text-sky-dark"
+                  className="font-mono text-sm text-navy underline decoration-periwinkle underline-offset-4 hover:text-cornflower-text"
                 >
                   {file}
                 </a>
-                <p className="mt-1 text-xs text-charcoal-light">{use}</p>
+                <p className="mt-1 text-xs text-navy-700/75">{use}</p>
               </div>
               <span className={`rounded-md px-3 py-2 ${dark ? 'bg-navy' : 'bg-cream'}`}>
-                <img src={`/${file}`} alt="" className="h-8" />
+                <img src={`/${file}`} alt="" className="h-9" />
               </span>
             </li>
           ))}
         </ul>
+        <p className="mt-4 text-xs leading-relaxed text-navy-700/60">
+          The original artwork is kept in <code>public/brand/</code> as the
+          reference these vectors were rebuilt from.
+        </p>
       </Section>
 
       <Section title="What not to do">
@@ -183,9 +204,9 @@ export default function Brand() {
           {MISUSE.map((rule) => (
             <li
               key={rule}
-              className="flex gap-3 rounded-lg border border-navy-100 bg-white p-4 text-sm leading-relaxed text-charcoal-light"
+              className="flex gap-3 rounded-lg border border-navy-100 bg-white p-4 text-sm leading-relaxed text-navy-700/75"
             >
-              <span aria-hidden="true" className="font-semibold text-sky-dark">
+              <span aria-hidden="true" className="font-semibold text-cornflower-text">
                 ×
               </span>
               {rule}

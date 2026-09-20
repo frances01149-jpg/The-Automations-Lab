@@ -4,41 +4,37 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Sampled from the supplied logo artwork — see brandTokens.js.
         navy: {
-          DEFAULT: '#1a3a52',
-          50: '#f2f6f9',
-          100: '#e0eaf1',
-          200: '#c2d5e4',
-          300: '#94b6ce',
-          400: '#6b9ec9',
-          500: '#3f6d92',
-          600: '#2d5373',
-          700: '#1a3a52',
-          800: '#142c3f',
-          900: '#0e1f2c',
+          DEFAULT: '#142a5e',
+          50: '#f2f5fd',
+          100: '#e4ebfb',
+          200: '#d9e2fc',
+          300: '#b3c4f2',
+          400: '#8fa9ea',
+          500: '#6682d5',
+          600: '#4f68b8',
+          700: '#2f4485',
+          800: '#1f3570',
+          900: '#142a5e',
+          950: '#0d1c40',
         },
-        sky: {
-          DEFAULT: '#6b9ec9',
-          light: '#94b6ce',
-          dark: '#3f6d92',
+        periwinkle: '#8fa9ea',
+        cornflower: {
+          DEFAULT: '#6682d5',
+          /** Text-safe on cream (5.02:1). Use for accent copy, not the logo. */
+          text: '#4f68b8',
         },
+        lime: '#dce566',
+        ice: '#f4f6ff',
         cream: {
-          DEFAULT: '#f9f8f5',
-          dark: '#efeee9',
-        },
-        charcoal: {
-          DEFAULT: '#3a3a3a',
-          light: '#5c5c5c',
-          muted: '#8a8a8a',
+          DEFAULT: '#fbfaf6',
+          dark: '#f1efe8',
         },
       },
       fontFamily: {
-        serif: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+        serif: ["'PT Serif'", 'Georgia', 'serif'],
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-      },
-      letterSpacing: {
-        brand: '0.18em',
-        wide: '0.32em',
       },
     },
   },

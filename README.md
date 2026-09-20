@@ -21,77 +21,75 @@ npm run dev        # http://localhost:5173
 
 ## What is in this branch
 
-This branch establishes the **brand identity layer** — the logo, the logotype
-and the design tokens everything else will be built on — plus the minimum app
-shell needed to see them in place.
+The **brand identity layer** — the company logo and logotype, rebuilt from the
+supplied artwork as scalable SVG, plus the design tokens everything else will
+be built on and the minimum app shell needed to see them in place.
 
 ```
 public/
-  logo.svg            Primary horizontal lockup (light surfaces)
-  logo-inverse.svg    Reversed lockup (navy / photographic surfaces)
-  logo-mark.svg       Isotype only (avatars, app icons)
-  favicon.svg         Heavier isotype, tuned for 16–32px
+  brand/              The supplied artwork, kept as the reference
+  logo.svg            Horizontal lockup (light surfaces)
+  logo-inverse.svg    Horizontal lockup reversed on navy
+  logo-tile.svg       The navy rounded-square app icon
+  logo-mark.svg       The bare A
+  favicon.svg         The tile — it holds at 16px where the bare A does not
 src/components/Brand/
-  Logo.jsx            The lockup — lockup | stacked | mark | wordmark
-  LogoMark.jsx        The isotype, drawn on a 64px grid
-  Logotype.jsx        The wordmark, as live text
+  Logo.jsx            The lockup — lockup | stacked | tile | mark | wordmark
+  LogoMark.jsx        The A, with or without its tile
+  Logotype.jsx        THE / Automation / Lab, as live text
+  markGeometry.js     The mark's measured geometry
   brandTokens.js      Palette and tone presets
 scripts/
-  generate-logo-assets.mjs   Emits public/*.svg from one shared definition
+  generate-logo-assets.mjs   Emits public/*.svg from the same geometry
+  logotype-outlines.json     Baked glyph outlines for the static lockups
 ```
 
-Visit **`/brand`** in the running app for the full identity reference: variants,
-scale, clear space, motion, palette, downloadable files and misuse rules.
+Visit **`/brand`** in the running app for the full identity reference.
 
 ## Using the logo
 
 ```jsx
 import { Logo } from '@/components/Brand'
 
-<Logo />                                   // horizontal lockup, navy
+<Logo />                                   // horizontal lockup
 <Logo variant="stacked" size="xl" />       // centred, for heroes
-<Logo variant="mark" size="sm" />          // isotype only
-<Logo tone="inverse" />                    // on navy or imagery
-<Logo variant="mark" size="xl" animated /> // nodes pulse, connectors draw
+<Logo variant="tile" size="sm" />          // the app icon
+<Logo variant="mark" />                    // the bare A
+<Logo tone="dark" />                       // on navy or imagery
+<Logo variant="tile" size="xl" animated /> // the nodes pulse
 ```
 
 | Prop | Values | Default |
 | --- | --- | --- |
-| `variant` | `lockup` · `stacked` · `mark` · `wordmark` | `lockup` |
+| `variant` | `lockup` · `stacked` · `tile` · `mark` · `wordmark` | `lockup` |
 | `size` | `sm` · `md` · `lg` · `xl` | `md` |
-| `tone` | `navy` · `inverse` · `mono` | `navy` |
+| `tone` | `light` · `dark` · `mono` | `light` |
 | `kicker` | `true` · `false` | `true` |
+| `rule` | `true` · `false` | `true` |
 | `animated` | `true` · `false` | `false` |
 
 The lockup announces itself to assistive tech as a single
 `"The Automation Lab"` image, so the name is never read twice.
 
-## Swapping in your own logo file
+## Changing the mark
 
-The mark is defined in exactly two places, both of which read from the same
-geometry constants:
-
-1. `src/components/Brand/LogoMark.jsx` — the in-app React component
-2. `scripts/generate-logo-assets.mjs` — the generator for `public/*.svg`
-
-To drop in a different mark, replace the paths in both and run
-`npm run brand:assets`. Nothing else in the codebase hard-codes the logo, so no
-other file needs to change.
-
-If you would rather use an exported asset file than an inline SVG component,
-put it in `public/` and replace the contents of `LogoMark.jsx` with an `<img>`
-pointing at it — but you will lose the `tone` and `animated` props, which need
-the SVG's internals to be addressable.
+The mark is defined once, in
+[`src/components/Brand/markGeometry.js`](src/components/Brand/markGeometry.js).
+Both the React component and `scripts/generate-logo-assets.mjs` read from it,
+so editing that file and running `npm run brand:assets` updates everything.
+Nothing else in the codebase hard-codes the logo.
 
 ## Brand tokens
 
-Navy `#1a3a52` · Sky `#6b9ec9` · Cream `#f9f8f5` · Charcoal `#3a3a3a`
-Cormorant Garamond (headlines) · Inter (body)
+Navy `#142a5e` · Periwinkle `#8fa9ea` · Cornflower `#6682d5` · Lime `#dce566`
+Ice `#f4f6ff` · Cream `#fbfaf6`
+PT Serif (headlines) · Inter (body)
 
-These are declared in three places that must be changed together:
+Declared in three places that must be changed together:
 
 - `tailwind.config.js` — utility classes
 - `src/styles/variables.css` — CSS custom properties
 - `src/components/Brand/brandTokens.js` — JS access, used by the logo
 
-See [`docs/BRAND.md`](docs/BRAND.md) for the usage rules.
+See [`docs/BRAND.md`](docs/BRAND.md) for usage rules, contrast measurements and
+a note on how the logotype's typefaces were identified.

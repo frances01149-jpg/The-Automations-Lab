@@ -1,102 +1,131 @@
 /**
- * Generates the static SVG brand assets in /public from one shared definition,
- * so they can never drift from src/components/Brand/LogoMark.jsx.
+ * Generates the static SVG brand assets in /public from the same geometry the
+ * React components use, so the two can never drift.
  *
  *   npm run brand:assets
  */
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { readFileSync } from 'node:fs'
 
-const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'public')
+const HERE = dirname(fileURLToPath(import.meta.url))
+const OUT = join(HERE, '..', 'public')
 
-const BRAND = {
-  navy: '#1a3a52',
-  sky: '#6b9ec9',
-  // Text-safe tints for the kicker line: 5.18:1 on cream, 5.56:1 on navy.
-  skyDark: '#3f6d92',
-  skyLight: '#94b6ce',
-  cream: '#f9f8f5',
+/**
+ * Glyph outlines for the logotype, baked once from PT Serif Bold and Inter
+ * (see docs/BRAND.md). Committed so this script needs no font files.
+ */
+const OUTLINES = JSON.parse(readFileSync(join(HERE, 'logotype-outlines.json'), 'utf8'))
+
+const C = {
+  navy: '#142a5e',
+  periwinkle: '#8fa9ea',
+  cornflower: '#6682d5',
+  lime: '#dce566',
+  ice: '#f4f6ff',
+  hairline: '#d9e2fc',
 }
 
-const TONES = {
-  navy: { shell: BRAND.navy, accent: BRAND.sky, kicker: BRAND.skyDark, word: BRAND.navy },
-  inverse: { shell: BRAND.cream, accent: BRAND.sky, kicker: BRAND.skyLight, word: BRAND.cream },
-}
+// Mirrors src/components/Brand/markGeometry.js.
+const LEGS = 'M627 168L165.9 1240.5M627 168L1088.1 1240.5'
+const GLYPH = { w: 1254, h: 1408 }
+const TILE = { size: 1744, radius: 374, dx: 245, dy: 128 }
 
-const FLASK = 'M27 11v14.8L12.1 49.1a6.2 6.2 0 0 0 5.2 9.6h29.4a6.2 6.2 0 0 0 5.2-9.6L37 25.8V11'
-const RIM = 'M23 11h18'
-const LIQUID = 'M15.4 44h33.2l3.3 5.1a6.2 6.2 0 0 1-5.2 9.6H17.3a6.2 6.2 0 0 1-5.2-9.6z'
-const NODES = [
-  [32, 18.5],
-  [23.5, 36],
-  [40.5, 36],
-]
-const EDGES = [
-  [0, 1],
-  [0, 2],
-  [1, 2],
-]
-
-/** The mark's inner geometry, optionally translated into a wider canvas. */
-function mark({ shell, accent }, { strokeWidth = 3.6, nodeRadius = 2.6, x = 0 } = {}) {
-  const shift = x ? ` transform="translate(${x} 0)"` : ''
-  const edges = EDGES.map(([a, b]) => {
-    const [x1, y1] = NODES[a]
-    const [x2, y2] = NODES[b]
-    return `    <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`
-  }).join('\n')
-  const dots = NODES.map(([cx, cy]) => `    <circle cx="${cx}" cy="${cy}" r="${nodeRadius}"/>`).join('\n')
-
+/** The A itself: halo stroke, body stroke, crossbar, two ringed nodes. */
+function glyph(body, { dx = 0, dy = 0 } = {}) {
+  const shift = dx || dy ? ` transform="translate(${dx} ${dy})"` : ''
   return `  <g${shift}>
-    <path d="${LIQUID}" fill="${accent}" opacity=".32"/>
-  <g stroke="${accent}" stroke-width="2" stroke-linecap="round">
-${edges}
-  </g>
-  <g fill="${accent}">
-${dots}
-  </g>
-  <g fill="none" stroke="${shell}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round">
-    <path d="${FLASK}"/>
-    <path d="${RIM}"/>
-  </g>
+    <path d="${LEGS}" fill="none" stroke="${C.periwinkle}" stroke-width="333" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${LEGS}" fill="none" stroke="${body}" stroke-width="195" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="266" y="762" width="721" height="156" rx="78" fill="${C.periwinkle}"/>
+    <rect x="316" y="812" width="621" height="56" rx="28" fill="${C.navy}"/>
+    <circle cx="627" cy="168" r="89" fill="${C.lime}"/><circle cx="627" cy="168" r="40" fill="${C.navy}"/>
+    <circle cx="627" cy="840" r="55" fill="${C.lime}"/><circle cx="627" cy="840" r="24" fill="${C.navy}"/>
   </g>`
 }
 
-function svg({ width, height, viewBox, body, label }) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox}" role="img" aria-label="${label}">
-  <title>${label}</title>
+const LABEL = 'The Automation Lab'
+
+function svg({ w, h, viewBox, body, defs = '' }) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${viewBox}" role="img" aria-label="${LABEL}">
+  <title>${LABEL}</title>${defs}
 ${body}
 </svg>
 `
 }
 
-const LABEL = 'The Automation Lab'
+/** The navy rounded-square app icon. */
+function tile() {
+  return svg({
+    w: TILE.size,
+    h: TILE.size,
+    viewBox: `0 0 ${TILE.size} ${TILE.size}`,
+    body: `  <rect width="${TILE.size}" height="${TILE.size}" rx="${TILE.radius}" fill="${C.navy}"/>
+${glyph(C.ice, { dx: TILE.dx, dy: TILE.dy })}`,
+  })
+}
 
-/** Horizontal lockup: mark + serif wordmark + tracked sans kicker. */
-function lockup(tone) {
-  const t = TONES[tone]
-  const body = `${mark(t)}
-  <text x="80" y="32" font-family="'Cormorant Garamond', Georgia, serif" font-size="27" font-weight="500" fill="${t.word}" letter-spacing=".3">${LABEL}</text>
-  <text x="81.5" y="48" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-size="7.5" font-weight="500" fill="${t.kicker}" letter-spacing="2.4">AUTOMATE WITH INTENT</text>`
-  return svg({ width: 320, height: 64, viewBox: '0 0 320 64', body, label: LABEL })
+/**
+ * Horizontal lockup. Proportions come from the source artwork, expressed
+ * against a 164-unit "Automation" (cap height 115, baseline at y=325).
+ *
+ * The logotype is emitted as outlines, not <text>: an SVG loaded through an
+ * <img> tag or an email client cannot fetch a webfont, so live text here
+ * would silently fall back to whatever serif the reader happens to have.
+ */
+function lockup(dark) {
+  const word = dark ? C.ice : C.navy
+  const lab = dark ? C.periwinkle : C.cornflower
+  const rule = dark ? 'rgba(217,226,252,.35)' : C.hairline
+
+  const TX = 505                 // left edge of the logotype column
+  const BASE = 325               // "Automation" baseline
+  const W = 1900
+  const H = 516
+
+  const bg = dark ? `  <rect width="${W}" height="${H}" fill="${C.navy}"/>\n` : ''
+
+  return svg({
+    w: W,
+    h: H,
+    viewBox: `0 0 ${W} ${H}`,
+    body: `${bg}  <g transform="translate(60 84) scale(0.247)">
+${glyph(dark ? C.ice : C.navy)}
+  </g>
+  <g fill="${C.periwinkle}">${place(OUTLINES.the, TX - 9, BASE - 208)}</g>
+  <g fill="${word}">${place(OUTLINES.automation, TX, BASE)}</g>
+  <g fill="${lab}">${place(OUTLINES.lab, TX + 1099, BASE)}</g>
+  <rect x="${TX + 5}" y="${BASE + 87}" width="1114" height="8" rx="4" fill="${rule}"/>
+  <circle cx="${TX + 1199}" cy="${BASE + 91}" r="16" fill="${lab}"/>
+  <circle cx="${TX + 1249}" cy="${BASE + 91}" r="16" fill="${lab}"/>
+  <circle cx="${TX + 1299}" cy="${BASE + 91}" r="16" fill="${C.lime}"/>`,
+  })
+}
+
+/** Re-anchor a baked outline run to a new origin. */
+function place(run, x, y) {
+  const dx = x - run.x
+  const dy = y - run.y
+  return `<g transform="translate(${dx.toFixed(2)} ${dy.toFixed(2)})">${run.paths.join('')}</g>`
 }
 
 const files = {
-  // Primary horizontal lockup, for light surfaces.
-  'logo.svg': lockup('navy'),
-  // Same lockup reversed out, for navy or photographic surfaces.
-  'logo-inverse.svg': lockup('inverse'),
-  // Isotype alone, for avatars, app icons and tight navigation.
-  'logo-mark.svg': svg({ width: 64, height: 64, viewBox: '0 0 64 64', body: mark(TONES.navy), label: LABEL }),
-  // Favicon: heavier strokes and larger nodes so it survives 16px rasterisation.
-  'favicon.svg': svg({
-    width: 64,
-    height: 64,
-    viewBox: '0 0 64 64',
-    body: mark(TONES.navy, { strokeWidth: 4.6, nodeRadius: 3.4 }),
-    label: LABEL,
+  // The A alone — favicons at larger sizes, avatars, inline use.
+  'logo-mark.svg': svg({
+    w: GLYPH.w,
+    h: GLYPH.h,
+    viewBox: `0 0 ${GLYPH.w} ${GLYPH.h}`,
+    body: glyph(C.navy),
   }),
+  // The navy rounded-square app icon.
+  'logo-tile.svg': tile(),
+  // Favicon: the tile, which stays legible at 16px where the bare A does not.
+  'favicon.svg': tile(),
+  // Horizontal lockup for light surfaces.
+  'logo.svg': lockup(false),
+  // Horizontal lockup reversed out on navy.
+  'logo-inverse.svg': lockup(true),
 }
 
 mkdirSync(OUT, { recursive: true })

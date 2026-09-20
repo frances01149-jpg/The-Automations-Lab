@@ -12,7 +12,7 @@
   }
 
   body {
-    @apply bg-cream font-sans text-charcoal antialiased;
+    @apply bg-cream font-sans text-navy-900 antialiased;
   }
 
   h1,
@@ -23,7 +23,7 @@
 
   /* Brand-coloured focus ring, visible on both cream and navy surfaces. */
   :focus-visible {
-    outline: 2px solid var(--tal-sky-dark);
+    outline: 2px solid var(--tal-cornflower-text);
     outline-offset: 3px;
     border-radius: 2px;
   }
