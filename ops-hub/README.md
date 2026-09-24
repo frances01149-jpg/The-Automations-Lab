@@ -1,7 +1,19 @@
-# Operations Hub: Inventory + Pantry Pilot workbook
+# Operations Hub: Inventory + Pantry Pilot
 
-An Excel workbook built to look and work like an app. Every number in it is a formula. It holds two
-separate systems:
+The SJUB office system ships in two forms that follow the same rules:
+
+- **Web app:** `app/sjub-ops-hub.html`, published as a private claude.ai artifact. It is a real app
+  with a sidebar, cards and charts, and the data is shared online by the whole team. Modules:
+  Overview, Stock, Weekly Count (a guided count sheet), Orders (suggested orders → purchase
+  orders), Receiving, Suppliers, Pilot Dashboard, Refills, Feedback, Tasks (a board with repeating
+  tasks), Calendar, Alerts, Reports (a monthly summary) and Settings (import products, export
+  everything to Excel).
+- **Excel workbook:** the formula-driven backup described below. Use it offline or where the app
+  can't be opened.
+
+## Excel workbook
+
+Every number in the workbook is a formula. It holds two separate systems:
 
 | System 1 · Inventory Management | System 2 · Pantry Pilot Tracker (60 days) |
 | --- | --- |
@@ -9,9 +21,10 @@ separate systems:
 | Inventory Master: stock %, OK / LOW / CRITICAL, suggested order | ✎ Restock Log: refill events, cadence, hours the shelf lasted |
 | ✎ Weekly Count: the weekly physical count | ✎ Feedback Log: employee feedback and follow-ups |
 | Order List: auto purchase list with priority and need-by date | Pilot Dashboard: KPIs, charts, EXPAND / CONTINUE / ADJUST signal |
-| Inventory Dashboard: KPIs, status donut, order units by category | |
+| Inventory Dashboard: KPIs, status donut, order units by category, expiry watch | ✎ Tasks: office tasks with owners and overdue flags |
+| ✎ Receiving Log: deliveries added to stock, with line cost | |
 
-The only things anyone types are **blue cells**: counts, refills and feedback. **Yellow cells**
+The only things anyone types are **blue cells**: counts, deliveries, refills, feedback and tasks. **Yellow cells**
 hold one-time setup. Everything else is locked and calculated.
 
 ## Files (`output/`)
@@ -54,6 +67,9 @@ date), `--demo` fills the workbook with sample data, and `--xltx` saves it as a 
 - **Latest count:** each count row gets a per-product sequence number. The Inventory Master reads
   sequence 1 as the starting qty and the highest sequence as the current stock. Add counts at the
   bottom, oldest first.
+- **Current stock** = the latest count + units received after that count (Receiving Log).
+- **Suppliers and costs:** optional Supplier and Unit Cost columns on Source Data feed the Order
+  List (estimated cost) and the Receiving Log (line cost).
 - **Status:** Stock % = Current ÷ PAR. At or below the critical % the item is CRITICAL; at or below
   the low % it is LOW; otherwise OK. An item with no count yet shows NO COUNT.
 - **Orders:** Order Qty = max(0, PAR − Current). By default only LOW and CRITICAL items are ordered;

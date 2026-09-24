@@ -76,6 +76,8 @@ PAGE = "FFFFFF"
 BAND = "F3F5FA"
 LINE = "D9DFEC"
 PANEL = "EEF2FA"
+CANVAS = "EEF1F6"       # app background behind cards
+HDR_BG, HDR_FG = "E6EBF4", "44506E"   # soft table headers
 
 IN_FILL = "DCE9FF"      # manual entry cells (blue)
 IN_FONT = "1446A0"
@@ -91,6 +93,10 @@ NONE_BG, NONE_FG = "E7EAF1", "5B6B8C"
 
 C_GREEN, C_AMBER, C_RED = "1E8E5A", "E0981A", "C8373A"
 C_TEAL, C_PURPLE, C_NAVY, C_BLUE = "12808A", "5B4BB7", "142A5E", "2458C6"
+# KPI cards: pastel fill + strong ink (navy stays a solid "hero" card)
+PASTEL = {C_RED: ("FCE2E4", "B42D3A"), C_GREEN: ("DCF3E7", "17804F"), C_AMBER: ("FFEFC9", "8F5B00"),
+          C_BLUE: ("E2E9FD", "2F5BD3"), C_TEAL: ("D8F0F0", "0F6E75"), C_PURPLE: ("ECE8FB", "4D3FA6"),
+          C_NAVY: ("142A5E", "FFFFFF")}
 
 FONT = "Segoe UI"
 
@@ -108,6 +114,8 @@ S_PP = "Pilot Products"
 S_RL = "Restock Log"
 S_FB = "Feedback Log"
 S_PD = "Pilot Dashboard"
+S_RC = "Receiving Log"
+S_TK = "Tasks"
 S_EN = "_Engine"
 
 NAV = [
@@ -115,18 +123,21 @@ NAV = [
     (S_CP, "⚙  CONTROL"),
     (S_MS, "INVENTORY"),
     (S_CL, "✎ COUNT"),
+    (S_RC, "✎ RECEIVE"),
     (S_OL, "ORDERS"),
     (S_ID, "◧ INV. DASH"),
     (S_PP, "PILOT ITEMS"),
     (S_RL, "✎ RESTOCK"),
     (S_FB, "✎ FEEDBACK"),
     (S_PD, "◧ PILOT DASH"),
+    (S_TK, "✎ TASKS"),
 ]
 
 TAB = {
     S_HOME: "DCE566", S_CP: "5B6B8C", S_SRC: "8A96AE",
     S_MS: "142A5E", S_CL: "2458C6", S_OL: "142A5E", S_ID: "0B1A3A",
     S_PP: "12808A", S_RL: "2458C6", S_FB: "2458C6", S_PD: "0B5E66",
+    S_RC: "2458C6", S_TK: "5B4BB7",
 }
 
 # Number formats (stored locale-independently in the file)
@@ -137,6 +148,7 @@ F_STAMP = "mmm d, h:mm AM/PM"
 F_INT = "#,##0"
 F_DEC = "0.0"
 F_PCT = "0%"
+F_MONEY = '"$"#,##0.00'
 
 
 # --------------------------------------------------------------------------- #
@@ -225,6 +237,8 @@ HEADER_KEYS = {
     "par": ["par value", "par level", "par", "nivel par"],
     "expiration": ["expiration", "expiry", "exp. date", "exp date", "vencimiento",
                    "caducidad"],
+    "supplier": ["supplier", "vendor", "proveedor"],
+    "cost": ["unit cost", "cost", "costo", "precio", "price"],
 }
 
 
@@ -244,7 +258,8 @@ def load_source(path: Path):
                 if v is None:
                     continue
                 # most specific keys first so "Item #" is not taken as "name"
-                for key in ("par", "expiration", "received", "number", "category", "name"):
+                for key in ("par", "expiration", "received", "supplier", "cost", "number",
+                            "category", "name"):
                     if key not in cols and _match(v, HEADER_KEYS[key]):
                         if key == "name" and _match(v, HEADER_KEYS["number"]) \
                                 and str(v).strip().lower() != "item":
@@ -298,6 +313,8 @@ def load_source(path: Path):
             "par": par,
             "expiration": exp,
             "section": section,
+            "supplier": (str(get("supplier")).strip() or None) if get("supplier") else None,
+            "unitCost": get("cost") if isinstance(get("cost"), (int, float)) else None,
         })
     print(f"Loaded {len(out)} products from '{path.name}' / sheet '{title}' "
           f"(header row {hr + 1}; columns: {', '.join(sorted(cols))})")
@@ -481,13 +498,11 @@ class Hub:
 
     def chrome(self, ws, key, subtitle, last_col, system):
         """Title bar, navigation strip and subtitle shared by every page."""
-        ws.row_dimensions[1].height = 36
-        ws.row_dimensions[2].height = 26
+        ws.row_dimensions[1].height = 42
+        ws.row_dimensions[2].height = 28
         ws.row_dimensions[3].height = 30
         ws.row_dimensions[4].height = 8
-        for c in range(1, last_col + 2):
-            ws.cell(1, c).fill = fill(INK)
-            ws.cell(2, c).fill = fill(NAV_BG)
+        self.paint(ws, last_col, 1, 4)
         vis = [c for c in range(2, last_col + 1) if not ws.column_dimensions[col_letter(c)].hidden]
         wid = {c: ws.column_dimensions[col_letter(c)].width or 8.43 for c in vis}
         k, acc = len(vis) - 1, 0.0
@@ -496,12 +511,12 @@ class Hub:
             k -= 1
         split = vis[k]
         merge(ws, 1, 2, 1, split,
-              value=f'="◆  "&UPPER(cfg_Site)&"  OPERATIONS HUB   |   {system}"',
-              f=font(15, True, "FFFFFF"), fl=fill(INK),
+              value=f'=cfg_Site&" Operations Hub   ·   {system.title()}"',
+              f=font(17, True, NAVY), fl=fill(CANVAS),
               al=Alignment(vertical="center", indent=0))
         merge(ws, 1, vis[k + 1], 1, vis[-1],
               value="=cfg_AsOf",
-              f=font(10, True, NAV_ON), fl=fill(INK),
+              f=font(10, True, SLATE), fl=fill(CANVAS),
               al=Alignment(horizontal="right", vertical="center", indent=1),
               nf='"AS OF  "mmm d, yyyy')
 
@@ -521,13 +536,22 @@ class Hub:
                 j = m
             start, end = vis[first], vis[j - 1]
             active = sheet == key
+            gap = Side(style="thick", color=CANVAS)
             cell = merge(ws, 2, start, 2, end, value=label,
-                         f=font(8.5, True, INK if active else "D5DDF0"),
-                         fl=fill(NAV_ON if active else NAV_BG), al=CENTER)
+                         f=font(8.5, True, "FFFFFF" if active else SLATE),
+                         fl=fill(NAVY if active else PAGE), al=CENTER,
+                         bd=Border(left=gap, right=gap, top=gap, bottom=gap))
             link(cell, sheet)
         merge(ws, 3, 2, 3, last_col, value=subtitle,
-              f=font(9.5, False, SLATE, italic=True),
+              f=font(9.5, False, SLATE),
               al=Alignment(vertical="center", wrap_text=True, indent=0))
+
+    def paint(self, ws, last_col, r1, r2):
+        """Soft app background for header rows and dashboard pages."""
+        bg = fill(CANVAS)
+        for r in range(r1, r2 + 1):
+            for c in range(1, last_col + 2):
+                ws.cell(r, c).fill = bg
 
     def protect(self, ws):
         p = ws.protection
@@ -553,9 +577,9 @@ class Hub:
         ws.row_dimensions[HDR].height = height
         for i, h in enumerate(heads):
             k = (kinds or {}).get(h, "calc")
-            bg = {"calc": NAVY, "in": IN_HDR, "set": SET_HDR}[k]
-            style(ws.cell(HDR, 2 + i, h), f=font(9, True, "FFFFFF"), fl=fill(bg),
-                  al=CENTER, bd=Border(bottom=side(INK, "medium")))
+            bg, fg = {"calc": (HDR_BG, HDR_FG), "in": ("CFE0FF", IN_FONT), "set": ("FBE7A8", SET_FONT)}[k]
+            style(ws.cell(HDR, 2 + i, h), f=font(9, True, fg), fl=fill(bg),
+                  al=CENTER, bd=Border(bottom=side("C5CEDF", "medium")))
 
     def band(self, ws, key_col, c1, c2, r1, r2):
         """Row banding + separators that only appear on filled rows."""
@@ -614,18 +638,22 @@ class Hub:
         ws.row_dimensions[r].height = 22
         ws.row_dimensions[r + 1].height = 42
         ws.row_dimensions[r + 2].height = 20
-        merge(ws, r, c1, r, c2, value=label, f=font(8.5, True, "FFFFFF"),
-              fl=fill(color), al=Alignment(horizontal="left", vertical="bottom", indent=1))
-        merge(ws, r + 1, c1, r + 1, c2, value=formula, f=font(24, True, "FFFFFF"),
-              fl=fill(color), al=Alignment(horizontal="left", vertical="center", indent=1),
-              nf=nf)
-        merge(ws, r + 2, c1, r + 2, c2, value=caption, f=font(8, False, "E8EEFA", italic=True),
-              fl=fill(color), al=Alignment(horizontal="left", vertical="top", indent=1))
+        bg, fg = PASTEL.get(color, (color, "FFFFFF"))
+        edge = Side(style="thick", color=CANVAS)
+        box = lambda top=False, bottom=False: Border(left=edge, right=edge, top=edge if top else None,
+                                                      bottom=edge if bottom else None)
+        merge(ws, r, c1, r, c2, value=label, f=font(8.5, True, fg),
+              fl=fill(bg), al=Alignment(horizontal="left", vertical="bottom", indent=1), bd=box(top=True))
+        merge(ws, r + 1, c1, r + 1, c2, value=formula, f=font(24, True, fg),
+              fl=fill(bg), al=Alignment(horizontal="left", vertical="center", indent=1),
+              nf=nf, bd=box())
+        merge(ws, r + 2, c1, r + 2, c2, value=caption, f=font(8, False, fg),
+              fl=fill(bg), al=Alignment(horizontal="left", vertical="top", indent=1), bd=box(bottom=True))
 
     def section(self, ws, r, c1, c2, text):
         ws.row_dimensions[r].height = 24
-        merge(ws, r, c1, r, c2, value=text, f=font(10.5, True, NAVY),
-              al=Alignment(vertical="bottom"), bd=Border(bottom=side(NAVY, "medium")))
+        merge(ws, r, c1, r, c2, value=text, f=font(11, True, NAVY),
+              al=Alignment(vertical="bottom"), bd=Border(bottom=side("C5CEDF")))
 
     # ===================================================================== #
     # CONTROL PANEL
@@ -729,7 +757,7 @@ class Hub:
         top = FIRST
         self.section(ws, top, 6, 9, "LISTS  (dropdown sources — edit anytime)")
         for nm, c, head, hint, values in lists:
-            style(ws.cell(top + 1, c, head), f=font(8.5, True, "FFFFFF"), fl=fill(SET_HDR),
+            style(ws.cell(top + 1, c, head), f=font(8.5, True, SET_FONT), fl=fill("FBE7A8"),
                   al=CENTER)
             style(ws.cell(top + 2, c, hint), f=font(8, False, SLATE, italic=True), al=CENTER)
             ws.row_dimensions[top + 2].height = 34
@@ -768,19 +796,20 @@ class Hub:
     # ===================================================================== #
     def build_source(self):
         ws = self.sheet(S_SRC)
-        last = self.widths(ws, [24, 44, 14, 14, 14, 10, 20])
+        last = self.widths(ws, [24, 44, 14, 14, 14, 10, 20, 11, 20])
         self.chrome(ws, S_SRC, "Product master from the source file. To launch another office: "
                     "clear this table and paste Category, Item Name, Item #, Recent Date Received, "
-                    "Expiration Date and PAR Value from the new source file (values only, no blank rows).",
+                    "Expiration Date and PAR Value from the new source file (values only, no blank rows). "
+                    "Supplier and Unit Cost are optional.",
                     last, "SOURCE DATA")
         heads = ["Category", "Item Name", "Item #", "Recent Date Received", "Expiration Date",
-                 "PAR Value", "Pilot Type Override"]
+                 "PAR Value", "Supplier", "Unit Cost", "Pilot Type Override"]
         self.headers(ws, heads, {h: "set" for h in heads})
         r2 = HDR + CAP_PRODUCTS
-        for i, col in enumerate(range(2, 9)):
-            nf = {4: F_DATE, 5: F_DATE, 6: F_INT}.get(col - 1)
+        for i, col in enumerate(range(2, 11)):
+            nf = {4: F_DATE, 5: F_DATE, 6: F_INT, 8: F_MONEY}.get(col - 1)
             self.body(ws, col, FIRST, r2, None, nf=nf, kind="set",
-                      al=LEFT if col in (2, 3) else CENTER)
+                      al=LEFT if col in (2, 3, 8) else CENTER)
         for i, p in enumerate(self.products[:CAP_PRODUCTS]):
             r = FIRST + i
             ws.cell(r, 2, p["category"])
@@ -789,11 +818,15 @@ class Hub:
             ws.cell(r, 5, p["received"])
             ws.cell(r, 6, p.get("expiration"))
             ws.cell(r, 7, p["par"])
-        self.dv(ws, f"H{FIRST}:H{r2}", "list", '"Snack,Beverage,Not in Pilot"',
+            ws.cell(r, 8, p.get("supplier"))
+            ws.cell(r, 9, p.get("unitCost"))
+        self.dv(ws, f"I{FIRST}:I{r2}", "decimal", "0", "1000000",
+                prompt="Optional. Cost per unit, used for order and receiving totals.", title="Unit cost")
+        self.dv(ws, f"J{FIRST}:J{r2}", "list", '"Snack,Beverage,Not in Pilot"',
                 prompt="Optional. Overrides the category mapping on the Control Panel.",
                 title="Pilot type")
         self.dv(ws, f"G{FIRST}:G{r2}", "decimal", "0", "1000000")
-        self.table(ws, "tblSource", 2, 8, r2)
+        self.table(ws, "tblSource", 2, 10, r2)
         ws.freeze_panes = f"A{FIRST}"
         self.name("SrcCount", f"COUNTA('{S_SRC}'!$C${FIRST}:$C${r2})")
 
@@ -807,7 +840,7 @@ class Hub:
         e1, e2 = 2, 1 + n
         heads = {1: "Idx", 2: "Category", 3: "Item Name", 4: "Item #", 5: "Label",
                  6: "Received", 7: "PAR", 8: "CatIdx", 9: "PilotType", 10: "PilotIdx",
-                 11: "WatchScore", 12: "Expiry", 28: "ExpiryScore",
+                 11: "WatchScore", 12: "Expiry", 28: "ExpiryScore", 29: "Supplier", 30: "UnitCost",
                  13: "k", 14: "Category", 15: "OrderUnits", 16: "Score", 17: "ItemsToOrder",
                  19: "k", 20: "SrcRow", 21: "PilotLabel", 22: "PilotType", 23: "Units",
                  24: "Score", 26: "FeedbackProducts"}
@@ -828,12 +861,14 @@ class Hub:
             ws.cell(r, 6, f'=IF(OR({S}$C{s}="",{S}E{s}=""),"",{S}E{s})')
             ws.cell(r, 7, f'=IF(OR({S}$C{s}="",{S}G{s}=""),"",{S}G{s})')
             ws.cell(r, 8, f'=IF(B{r}="","",IF(COUNTIF($B${e1}:B{r},B{r})=1,MAX($H$1:H{r - 1})+1,""))')
-            ws.cell(r, 9, f'=IF(C{r}="","",IF({S}H{s}="Not in Pilot","",IF({S}H{s}<>"",{S}H{s},'
+            ws.cell(r, 9, f'=IF(C{r}="","",IF({S}J{s}="Not in Pilot","",IF({S}J{s}<>"",{S}J{s},'
                           f'IF(COUNTIF(SnackCats,B{r})>0,"Snack",IF(COUNTIF(BevCats,B{r})>0,"Beverage","")))))')
             ws.cell(r, 10, f'=IF(I{r}="","",COUNTIF($I${e1}:I{r},"Snack")+COUNTIF($I${e1}:I{r},"Beverage"))')
             ws.cell(r, 11, f'=IF(OR({M}J{m}="CRITICAL",{M}J{m}="LOW"),{M}I{m}+A{r}/1000000,"")')
             ws.cell(r, 12, f'=IF(OR({S}$C{s}="",{S}F{s}=""),"",{S}F{s})')
             ws.cell(r, 28, f'=IF(ISNUMBER(L{r}),L{r}+A{r}/1000000,"")')
+            ws.cell(r, 29, f'=IF(OR({S}$C{s}="",{S}H{s}=""),"",{S}H{s})')
+            ws.cell(r, 30, f'=IF(OR({S}$C{s}="",{S}I{s}=""),"",{S}I{s})')
         self.name("Eng_Cat", rng(S_EN, "B", e1, e2))
         self.name("Eng_Name", rng(S_EN, "C", e1, e2))
         self.name("Eng_Item", rng(S_EN, "D", e1, e2))
@@ -842,6 +877,8 @@ class Hub:
         self.name("Eng_PilotIdx", rng(S_EN, "J", e1, e2))
         self.name("Eng_Watch", rng(S_EN, "K", e1, e2))
         self.name("Eng_Expiry", rng(S_EN, "AB", e1, e2))
+        self.name("Eng_Supplier", rng(S_EN, "AC", e1, e2))
+        self.name("Eng_Cost", rng(S_EN, "AD", e1, e2))
         self.name("ProductList", f"OFFSET('{S_EN}'!$E$2,0,0,MAX(1,SrcCount),1)")
 
         # categories
@@ -890,10 +927,10 @@ class Hub:
         heads = ["Category", "Item Name", "Item #", "PAR Level", "Starting Qty", "Latest Count",
                  "Current Stock", "Stock %", "Status", "Suggested Order Qty", "Last Count Date",
                  "Last Received Date", "Counts Logged", "Expiration Date", "Days to Expiry",
-                 "Expiry Status"]
-        last = self.widths(ws, [20, 34, 11, 10, 11, 11, 11, 14, 12, 13, 15, 15, 10, 14, 10, 12])
-        self.chrome(ws, S_MS, "One row per product, built from Source Data. Latest counts are read "
-                    "automatically from the Weekly Count log. Status: OK › LOW › CRITICAL using the "
+                 "Expiry Status", "Received Since Count", "Supplier", "Unit Cost"]
+        last = self.widths(ws, [20, 34, 11, 10, 11, 11, 11, 14, 12, 13, 15, 15, 10, 14, 10, 12, 12, 18, 10])
+        self.chrome(ws, S_MS, "One row per product, built from Source Data. Current stock = latest "
+                    "count + units received after it (Receiving Log). Status: OK › LOW › CRITICAL using the "
                     "Control Panel thresholds. Nothing on this page is typed by hand.",
                     last, "INVENTORY MANAGEMENT")
         self.headers(ws, heads)
@@ -906,7 +943,7 @@ class Hub:
             ("E", f"={E}G{{e}}", F_INT, None),
             ("F", '=IF(OR($C{r}="",N{r}=0),"",INDEX(CL_Count,MATCH(' + E + 'E{e}&"|1",CL_Key,0)))', F_INT, None),
             ("G", '=IF(OR($C{r}="",N{r}=0),"",INDEX(CL_Count,MATCH(' + E + 'E{e}&"|"&N{r},CL_Key,0)))', F_INT, None),
-            ("H", '=IF($C{r}="","",G{r})', F_INT, None),
+            ("H", '=IF(OR($C{r}="",G{r}=""),"",G{r}+N(R{r}))', F_INT, None),
             ("I", '=IF(OR(H{r}="",E{r}="",N(E{r})=0),"",H{r}/E{r})', F_PCT, None),
             ("J", '=IF($C{r}="","",IF(H{r}="","NO COUNT",IF(OR(E{r}="",N(E{r})=0),"NO PAR",'
                   'IF(I{r}<=cfg_Crit,"CRITICAL",IF(I{r}<=cfg_Low,"LOW","OK")))))', None, None),
@@ -918,13 +955,16 @@ class Hub:
             ("P", '=IF(ISNUMBER(O{r}),O{r}-cfg_AsOf,"")', "0;[Red]-0;0", None),
             ("Q", '=IF($C{r}="","",IF(NOT(ISNUMBER(O{r})),"N/A",IF(P{r}<0,"EXPIRED",'
                   'IF(P{r}<=cfg_ExpiryWarn,"EXPIRING","OK"))))', None, None),
+            ("R", '=IF(OR($C{r}="",L{r}=""),"",SUMIFS(RC_Qty,RC_Prod,' + E + 'E{e},RC_Date,">"&L{r}))', F_INT, None),
+            ("S", f"={E}AC{{e}}", None, LEFT),
+            ("T", f"={E}AD{{e}}", F_MONEY, None),
         ]
         for letter, f, nf, al in cols:
             c = ord(letter) - 64
             for r in range(FIRST, r2 + 1):
                 cell = ws.cell(r, c, f.format(r=r, e=r - FIRST + 2))
                 style(cell, f=font(10), al=al or CENTER, nf=nf)
-        self.band(ws, 3, 2, 17, FIRST, r2)
+        self.band(ws, 3, 2, 20, FIRST, r2)
         self.status_colors(ws, f"Q{FIRST}:Q{r2}", {
             "EXPIRED": (CRIT_BG, CRIT_FG), "EXPIRING": (LOW_BG, LOW_FG), "OK": (OK_BG, OK_FG),
             "N/A": (NONE_BG, NONE_FG)})
@@ -933,7 +973,7 @@ class Hub:
             "NO COUNT": (NONE_BG, NONE_FG), "NO PAR": (NONE_BG, NONE_FG)})
         ws.conditional_formatting.add(f"I{FIRST}:I{r2}", DataBarRule(
             start_type="num", start_value=0, end_type="num", end_value=1, color="8FA9EA"))
-        self.table(ws, "tblInventory", 2, 17, r2)
+        self.table(ws, "tblInventory", 2, 20, r2)
         ws.freeze_panes = f"D{FIRST}"
         for nm, L in [("MS_Name", "C"), ("MS_Status", "J"), ("MS_Stock", "H"), ("MS_PAR", "E"),
                       ("MS_Pct", "I"), ("MS_Sugg", "K"), ("MS_Cat", "B"), ("MS_Exp", "O"),
@@ -1007,8 +1047,9 @@ class Hub:
     def build_orders(self):
         ws = self.sheet(S_OL)
         heads = ["Category", "Item Name", "Item #", "Current Stock", "PAR Level", "Order Qty",
-                 "Status", "Order Month", "Need-By Date", "Priority", "Order Flag"]
-        last = self.widths(ws, [20, 34, 11, 12, 10, 11, 12, 12, 14, 12, 13])
+                 "Status", "Order Month", "Need-By Date", "Priority", "Order Flag", "Supplier",
+                 "Unit Cost", "Est. Cost"]
+        last = self.widths(ws, [20, 34, 11, 12, 10, 11, 12, 12, 14, 12, 13, 18, 10, 12])
         self.chrome(ws, S_OL, "Auto-generated purchase list. Use the header filters (e.g. Order Flag = "
                     "ORDER, Priority = URGENT). Order Qty = PAR − Current Stock, never negative. "
                     "Nothing on this page is typed by hand.", last, "INVENTORY MANAGEMENT")
@@ -1029,7 +1070,10 @@ class Hub:
         B(ws, 11, FIRST, r2, '=IF($C{r}="","",IF(H{r}="CRITICAL","URGENT",IF(H{r}="LOW","STANDARD",'
           'IF(AND(cfg_ReorderOK="Yes",H{r}="OK",N(' + M + 'K{r})>0),"STANDARD","NONE"))))')
         B(ws, 12, FIRST, r2, '=IF($C{r}="","",IF(AND(K{r}<>"NONE",N(' + M + 'K{r})>0),"ORDER","NO ORDER"))')
-        self.band(ws, 3, 2, 12, FIRST, r2)
+        B(ws, 13, FIRST, r2, f"={M}S{{r}}", al=LEFT)
+        B(ws, 14, FIRST, r2, f"={M}T{{r}}", F_MONEY)
+        B(ws, 15, FIRST, r2, '=IF(OR($C{r}="",N(G{r})=0,N{r}=""),"",G{r}*N{r})', F_MONEY)
+        self.band(ws, 3, 2, 15, FIRST, r2)
         self.status_colors(ws, f"H{FIRST}:H{r2}", {
             "OK": (OK_BG, OK_FG), "LOW": (LOW_BG, LOW_FG), "CRITICAL": (CRIT_BG, CRIT_FG),
             "NO COUNT": (NONE_BG, NONE_FG), "NO PAR": (NONE_BG, NONE_FG)})
@@ -1039,9 +1083,9 @@ class Hub:
             "ORDER": (NAVY, "FFFFFF"), "NO ORDER": (PAGE, MUTED)})
         ws.conditional_formatting.add(f"G{FIRST}:G{r2}", CellIsRule(
             operator="greaterThan", formula=["0"], font=Font(bold=True, color=NAVY)))
-        self.table(ws, "tblOrders", 2, 12, r2)
+        self.table(ws, "tblOrders", 2, 15, r2)
         ws.freeze_panes = f"D{FIRST}"
-        for nm, L in [("OL_Cat", "B"), ("OL_Qty", "G"), ("OL_Flag", "L"), ("OL_Priority", "K")]:
+        for nm, L in [("OL_Cat", "B"), ("OL_Qty", "G"), ("OL_Flag", "L"), ("OL_Priority", "K"), ("OL_Cost", "O")]:
             self.name(nm, rng(S_OL, L, FIRST, r2))
         self.protect(ws)
 
@@ -1053,6 +1097,7 @@ class Hub:
         last = self.widths(ws, [10.5] * 16)
         self.chrome(ws, S_ID, "Live inventory health. Updates the moment a count is logged or a "
                     "threshold changes on the Control Panel.", last, "INVENTORY DASHBOARD")
+        self.paint(ws, last, 5, 80)
         ws.freeze_panes = "A4"
         counted = '(COUNTIF(MS_Status,"OK")+COUNTIF(MS_Status,"LOW")+COUNTIF(MS_Status,"CRITICAL"))'
         cards = [
@@ -1064,7 +1109,8 @@ class Hub:
              '="≤ "&FIXED(cfg_Low*100,0)&"% of PAR"'),
             ("CRITICAL ITEMS", '=COUNTIF(MS_Status,"CRITICAL")', F_INT, C_RED,
              '="≤ "&FIXED(cfg_Crit*100,0)&"% of PAR"'),
-            ("UNITS TO ORDER", "=SUM(OL_Qty)", F_INT, C_BLUE, '="For the order month"'),
+            ("UNITS TO ORDER", "=SUM(OL_Qty)", F_INT, C_BLUE,
+             '=IF(SUM(OL_Cost)>0,"≈ $"&FIXED(SUM(OL_Cost),2)&" estimated","Add unit costs to see spend")'),
             ("ITEMS TO ORDER", '=COUNTIF(OL_Flag,"ORDER")', F_INT, C_TEAL,
              '=COUNTIF(OL_Priority,"URGENT")&" urgent"'),
             ("LAST COUNT DATE", '=IF(MAX(CL_Date)=0,"No counts",MAX(CL_Date))', F_DATE, C_PURPLE,
@@ -1083,9 +1129,9 @@ class Hub:
         self.section(ws, 13, 9, 17, f"ORDER UNITS BY CATEGORY  (top {TOP_N})")
         tr = 32  # data tables start below the charts
         self.section(ws, tr, 2, 7, "STATUS MIX — DATA")
-        style(ws.cell(tr + 1, 2, "Status"), f=font(9, True, "FFFFFF"), fl=fill(NAVY), al=CENTER)
-        merge(ws, tr + 1, 3, tr + 1, 4, "Items", f=font(9, True, "FFFFFF"), fl=fill(NAVY), al=CENTER)
-        merge(ws, tr + 1, 5, tr + 1, 7, "Share", f=font(9, True, "FFFFFF"), fl=fill(NAVY), al=CENTER)
+        style(ws.cell(tr + 1, 2, "Status"), f=font(9, True, HDR_FG), fl=fill(HDR_BG), al=CENTER)
+        merge(ws, tr + 1, 3, tr + 1, 4, "Items", f=font(9, True, HDR_FG), fl=fill(HDR_BG), al=CENTER)
+        merge(ws, tr + 1, 5, tr + 1, 7, "Share", f=font(9, True, HDR_FG), fl=fill(HDR_BG), al=CENTER)
         mix = [("OK", C_GREEN), ("LOW", C_AMBER), ("CRITICAL", C_RED), ("NO COUNT", "B8C0D2")]
         for i, (s, colr) in enumerate(mix):
             r = tr + 2 + i
@@ -1095,10 +1141,10 @@ class Hub:
                   f=font(10), al=CENTER, bd=BOTTOM, nf=F_PCT)
 
         self.section(ws, tr, 9, 17, "ORDER UNITS BY CATEGORY — DATA")
-        style(ws.cell(tr + 1, 9, "#"), f=font(9, True, "FFFFFF"), fl=fill(NAVY), al=CENTER)
-        merge(ws, tr + 1, 10, tr + 1, 13, "Category", f=font(9, True, "FFFFFF"), fl=fill(NAVY), al=CENTER)
-        merge(ws, tr + 1, 14, tr + 1, 15, "Order Units", f=font(9, True, "FFFFFF"), fl=fill(NAVY), al=CENTER)
-        merge(ws, tr + 1, 16, tr + 1, 17, "Items to Order", f=font(9, True, "FFFFFF"), fl=fill(NAVY), al=CENTER)
+        style(ws.cell(tr + 1, 9, "#"), f=font(9, True, HDR_FG), fl=fill(HDR_BG), al=CENTER)
+        merge(ws, tr + 1, 10, tr + 1, 13, "Category", f=font(9, True, HDR_FG), fl=fill(HDR_BG), al=CENTER)
+        merge(ws, tr + 1, 14, tr + 1, 15, "Order Units", f=font(9, True, HDR_FG), fl=fill(HDR_BG), al=CENTER)
+        merge(ws, tr + 1, 16, tr + 1, 17, "Items to Order", f=font(9, True, HDR_FG), fl=fill(HDR_BG), al=CENTER)
         for k in range(1, TOP_N + 1):
             r = tr + 1 + k
             style(ws.cell(r, 9, k), f=font(9, False, MUTED), al=CENTER, bd=BOTTOM)
@@ -1116,7 +1162,7 @@ class Hub:
         wh = [(2, 2, "#"), (3, 6, "Item"), (7, 9, "Category"), (10, 11, "Stock %"),
               (12, 13, "On Hand"), (14, 15, "Order Qty"), (16, 17, "Status")]
         for c1, c2, h in wh:
-            merge(ws, wr + 1, c1, wr + 1, c2, h, f=font(9, True, "FFFFFF"), fl=fill(NAVY), al=CENTER)
+            merge(ws, wr + 1, c1, wr + 1, c2, h, f=font(9, True, HDR_FG), fl=fill(HDR_BG), al=CENTER)
         for k in range(1, TOP_N + 1):
             r = wr + 1 + k
             style(ws.cell(r, 2, k), f=font(9, False, MUTED), al=CENTER, bd=BOTTOM)
@@ -1140,7 +1186,7 @@ class Hub:
         eh = [(2, 2, "#"), (3, 6, "Item"), (7, 9, "Category"), (10, 11, "Expiration"),
               (12, 13, "Days Left"), (14, 15, "On Hand"), (16, 17, "Expiry Status")]
         for c1, c2, h in eh:
-            merge(ws, er + 1, c1, er + 1, c2, h, f=font(9, True, "FFFFFF"), fl=fill(NAVY), al=CENTER)
+            merge(ws, er + 1, c1, er + 1, c2, h, f=font(9, True, HDR_FG), fl=fill(HDR_BG), al=CENTER)
         for k in range(1, TOP_N + 1):
             r = er + 1 + k
             style(ws.cell(r, 2, k), f=font(9, False, MUTED), al=CENTER, bd=BOTTOM)
@@ -1402,6 +1448,7 @@ class Hub:
         self.chrome(ws, S_PD, "Leadership view of the pantry pilot: consumption, refill cadence and "
                     "employee sentiment, with a rule-based recommendation (rules on the Control Panel).",
                     last, "PILOT DASHBOARD")
+        self.paint(ws, last, 5, 72)
         ws.freeze_panes = "A4"
         day = "IF(cfg_AsOf<cfg_PilotStart,0,MIN(cfg_AsOf-cfg_PilotStart+1,cfg_PilotDays))"
         # status banner + progress
@@ -1490,7 +1537,7 @@ class Hub:
         tr = 43
         self.section(ws, tr, 2, 10, "UNITS PLACED BY PRODUCT — DATA")
         for c1, c2, h in [(2, 2, "#"), (3, 6, "Product"), (7, 8, "Type"), (9, 10, "Units")]:
-            merge(ws, tr + 1, c1, tr + 1, c2, h, f=font(9, True, "FFFFFF"), fl=fill(NAVY), al=CENTER)
+            merge(ws, tr + 1, c1, tr + 1, c2, h, f=font(9, True, HDR_FG), fl=fill(HDR_BG), al=CENTER)
         for k in range(1, TOP_N + 1):
             r = tr + 1 + k
             style(ws.cell(r, 2, k), f=font(9, False, MUTED), al=CENTER, bd=BOTTOM)
@@ -1504,7 +1551,7 @@ class Hub:
 
         self.section(ws, tr, 12, 17, "RATING DISTRIBUTION — DATA")
         for c1, c2, h in [(12, 13, "Rating"), (14, 15, "Responses"), (16, 17, "Share")]:
-            merge(ws, tr + 1, c1, tr + 1, c2, h, f=font(9, True, "FFFFFF"), fl=fill(NAVY), al=CENTER)
+            merge(ws, tr + 1, c1, tr + 1, c2, h, f=font(9, True, HDR_FG), fl=fill(HDR_BG), al=CENTER)
         rating_colors = [C_RED, "E8663A", C_AMBER, "7DBB5A", C_GREEN]
         for i in range(5):
             r = tr + 2 + i
@@ -1520,7 +1567,7 @@ class Hub:
         for c1, c2, h in [(2, 3, "Pilot Week"), (4, 5, "Days"), (6, 7, "Refill Events"),
                           (8, 9, "Units Placed"), (10, 11, "Feedback"), (12, 13, "Avg Rating"),
                           (14, 15, "Concerns"), (16, 17, "Empty on Arrival")]:
-            merge(ws, wr + 1, c1, wr + 1, c2, h, f=font(9, True, "FFFFFF"), fl=fill(NAVY), al=CENTER)
+            merge(ws, wr + 1, c1, wr + 1, c2, h, f=font(9, True, HDR_FG), fl=fill(HDR_BG), al=CENTER)
         for w in range(1, weeks + 1):
             r = wr + 1 + w
             lo, hi = (w - 1) * 7 + 1, w * 7
@@ -1566,29 +1613,112 @@ class Hub:
         self.protect(ws)
 
     # ===================================================================== #
+    # RECEIVING LOG
+    # ===================================================================== #
+    def build_receiving(self):
+        ws = self.sheet(S_RC)
+        heads = ["Date Received", "Product", "Item #", "Supplier", "Qty Received", "Unit Cost",
+                 "Line Cost", "PO / Reference", "Received By", "Month", "Record ID"]
+        last = self.widths(ws, [14, 36, 11, 18, 11, 11, 12, 16, 16, 11, 12])
+        self.chrome(ws, S_RC, "Log every delivery — type only the BLUE columns. Units received after a "
+                    "product's last count are added to its Current Stock. Leave Unit Cost empty to use "
+                    "the cost from Source Data.", last, "INVENTORY MANAGEMENT")
+        kinds = {h: "in" for h in ["Date Received", "Product", "Qty Received", "Unit Cost",
+                                   "PO / Reference", "Received By"]}
+        self.headers(ws, heads, kinds)
+        r2 = HDR + CAP_REFILLS
+        B = self.body
+        B(ws, 2, FIRST, r2, None, F_DATE, kind="in")
+        B(ws, 3, FIRST, r2, None, kind="in", al=LEFT)
+        B(ws, 4, FIRST, r2, '=IF(C{r}="","",IFERROR(INDEX(Eng_Item,MATCH(C{r},Eng_Label,0)),"not in list"))')
+        B(ws, 5, FIRST, r2, '=IF(C{r}="","",IFERROR(INDEX(Eng_Supplier,MATCH(C{r},Eng_Label,0)),""))', al=LEFT)
+        B(ws, 6, FIRST, r2, None, F_INT, kind="in")
+        B(ws, 7, FIRST, r2, None, F_MONEY, kind="in")
+        B(ws, 8, FIRST, r2, '=IF(F{r}="","",F{r}*IF(G{r}<>"",G{r},N(IFERROR(INDEX(Eng_Cost,MATCH(C{r},Eng_Label,0)),0))))', F_MONEY)
+        B(ws, 9, FIRST, r2, None, kind="in", al=LEFT)
+        B(ws, 10, FIRST, r2, None, kind="in", al=LEFT)
+        B(ws, 11, FIRST, r2, '=IF(B{r}="","",DATE(YEAR(B{r}),MONTH(B{r}),1))', F_MONTH)
+        B(ws, 12, FIRST, r2, '=IF(OR(B{r}="",C{r}=""),"","RCV-"&TEXT(ROW()-' + str(HDR) + ',"00000"))')
+        for a, b in [(4, 5), (8, 8), (11, 12)]:
+            self.band(ws, 3, a, b, FIRST, r2)
+        ws.conditional_formatting.add(f"D{FIRST}:D{r2}", CellIsRule(
+            operator="equal", formula=['"not in list"'], font=Font(color=C_RED, bold=True)))
+        self.dv(ws, f"B{FIRST}:B{r2}", "date", "DATE(2020,1,1)", "DATE(2100,12,31)",
+                prompt="Date the delivery arrived.", title="Date received")
+        self.dv(ws, f"C{FIRST}:C{r2}", "list", "=ProductList", prompt="Pick the product.", title="Product")
+        self.dv(ws, f"F{FIRST}:F{r2}", "decimal", "0", "1000000", prompt="Units received.", title="Quantity")
+        self.dv(ws, f"G{FIRST}:G{r2}", "decimal", "0", "1000000")
+        self.dv(ws, f"J{FIRST}:J{r2}", "list", "=StaffList", strict=False)
+        self.table(ws, "tblReceiving", 2, 12, r2)
+        ws.freeze_panes = f"A{FIRST}"
+        for nm, L in [("RC_Date", "B"), ("RC_Prod", "C"), ("RC_Qty", "F"), ("RC_Cost", "H"), ("RC_Month", "K")]:
+            self.name(nm, rng(S_RC, L, FIRST, r2))
+        self.protect(ws)
+
+    # ===================================================================== #
+    # TASKS
+    # ===================================================================== #
+    def build_tasks(self):
+        ws = self.sheet(S_TK)
+        heads = ["Task", "Owner", "Due Date", "Priority", "Status", "Category", "Notes",
+                 "Days Left", "Flag", "Task ID"]
+        last = self.widths(ws, [38, 16, 13, 11, 13, 14, 36, 10, 13, 10])
+        self.chrome(ws, S_TK, "Office tasks with an owner and a due date — type only the BLUE columns. "
+                    "Set Status to Done when finished; overdue work is flagged here and on Home.",
+                    last, "OFFICE")
+        self.headers(ws, heads, {h: "in" for h in heads[:7]})
+        r2 = HDR + CAP_FEEDBACK // 2
+        B = self.body
+        B(ws, 2, FIRST, r2, None, kind="in", al=LEFT)
+        B(ws, 3, FIRST, r2, None, kind="in", al=LEFT)
+        B(ws, 4, FIRST, r2, None, F_DATE, kind="in")
+        B(ws, 5, FIRST, r2, None, kind="in")
+        B(ws, 6, FIRST, r2, None, kind="in")
+        B(ws, 7, FIRST, r2, None, kind="in", al=LEFT)
+        B(ws, 8, FIRST, r2, None, kind="in", wrap=True)
+        B(ws, 9, FIRST, r2, '=IF(OR(B{r}="",D{r}="",F{r}="Done"),"",D{r}-cfg_AsOf)', "0;[Red]-0;0")
+        B(ws, 10, FIRST, r2, '=IF(B{r}="","",IF(F{r}="Done","DONE",IF(D{r}="","NO DATE",IF(D{r}<cfg_AsOf,'
+          '"OVERDUE",IF(D{r}-cfg_AsOf<=3,"DUE SOON","ON TRACK")))))')
+        B(ws, 11, FIRST, r2, '=IF(B{r}="","","TSK-"&TEXT(ROW()-' + str(HDR) + ',"0000"))')
+        self.band(ws, 2, 9, 11, FIRST, r2)
+        self.status_colors(ws, f"J{FIRST}:J{r2}", {
+            "OVERDUE": (CRIT_BG, CRIT_FG), "DUE SOON": (LOW_BG, LOW_FG), "ON TRACK": (OK_BG, OK_FG),
+            "DONE": (NONE_BG, NONE_FG), "NO DATE": (NONE_BG, NONE_FG)})
+        self.status_colors(ws, f"E{FIRST}:E{r2}", {
+            "High": (CRIT_BG, CRIT_FG), "Medium": (LOW_BG, LOW_FG), "Low": (NONE_BG, NONE_FG)})
+        self.dv(ws, f"C{FIRST}:C{r2}", "list", "=StaffList", strict=False)
+        self.dv(ws, f"D{FIRST}:D{r2}", "date", "DATE(2020,1,1)", "DATE(2100,12,31)")
+        self.dv(ws, f"E{FIRST}:E{r2}", "list", '"High,Medium,Low"')
+        self.dv(ws, f"F{FIRST}:F{r2}", "list", '"To do,In progress,Done"')
+        self.dv(ws, f"G{FIRST}:G{r2}", "list", '"Inventory,Pantry,Facilities,Admin"', strict=False)
+        self.table(ws, "tblTasks", 2, 11, r2, row_height=24)
+        ws.freeze_panes = f"A{FIRST}"
+        for nm, L in [("TK_Status", "F"), ("TK_Flag", "J")]:
+            self.name(nm, rng(S_TK, L, FIRST, r2))
+        self.protect(ws)
+
+    # ===================================================================== #
     # HOME (launcher)
     # ===================================================================== #
     def build_home(self):
         ws = self.sheet(S_HOME, first=True)
         last = self.widths(ws, [10.5] * 16)
-        self.chrome(ws, S_HOME, "Welcome. Pick a module below. Only three things are ever typed by "
-                    "hand — counts, refills and feedback — everything else runs itself.",
-                    last, "HOME")
+        self.chrome(ws, S_HOME, "Pick a module below. Only counts, deliveries, refills, feedback and "
+                    "tasks are typed by hand; everything else runs itself.", last, "HOME")
+        self.paint(ws, last, 5, 48)
         ws.freeze_panes = "A4"
         ws.row_dimensions[5].height = 10
         if self.demo:
             merge(ws, 6, 2, 6, 17, "DEMO DATA — sample products and entries for exploring the "
                   "system. Build from the real source file before going live.",
                   f=font(10, True, CRIT_FG), fl=fill(CRIT_BG), al=CENTER)
-            ws.row_dimensions[6].height = 24
         else:
             merge(ws, 6, 2, 6, 17, '=IF(SrcCount=0,"NO PRODUCTS LOADED — open Source Data and paste '
-                  'Category, Item Name, Item #, Recent Date Received and PAR Value from the source file.","")',
+                  'Category, Item Name, Item #, Recent Date Received, Expiration Date and PAR Value.","")',
                   f=font(10, True, CRIT_FG), al=CENTER)
             ws.conditional_formatting.add("B6:Q6", FormulaRule(formula=['$B$6<>""'], fill=fill(CRIT_BG)))
-            ws.row_dimensions[6].height = 24
+        ws.row_dimensions[6].height = 22
 
-        # live status strip
         self.section(ws, 7, 2, 17, "RIGHT NOW")
         live = [
             ("CRITICAL ITEMS", '=COUNTIF(MS_Status,"CRITICAL")', F_INT, C_RED),
@@ -1602,64 +1732,90 @@ class Hub:
             self.card(ws, 8, c, c + 3, lab, f, nf, colr, "")
         ws.cell(9, 14).font = font(15, True, "FFFFFF")
 
-        def tile(r, c, title, desc, sheet, colr, entry=False):
+        # alerts panel
+        self.section(ws, 12, 2, 17, "ALERTS")
+        alerts = [
+            ("Critical items (order now)", '=COUNTIF(MS_Status,"CRITICAL")', S_OL, "0"),
+            ("Expired products", '=COUNTIF(MS_ExpStatus,"EXPIRED")', S_MS, "0"),
+            ('="Products expiring within "&cfg_ExpiryWarn&" days"', '=COUNTIF(MS_ExpStatus,"EXPIRING")', S_MS, "0"),
+            ("Days since the last weekly count", '=IF(MAX(CL_Date)=0,"No count yet",cfg_AsOf-MAX(CL_Date))', S_CL, "7"),
+            ("Overdue tasks", '=COUNTIF(TK_Flag,"OVERDUE")', S_TK, "0"),
+            ("Open feedback follow-ups", '=COUNTIFS(FB_FollowUp,"Yes",FB_Status,"<>Closed")', S_FB, "0"),
+        ]
+        for i, (lab, f, sheet, limit) in enumerate(alerts):
+            r = 13 + i
+            ws.row_dimensions[r].height = 24
+            merge(ws, r, 2, r, 11, lab, f=font(10, True, "1F2A44"), fl=fill(PAGE), al=LEFT, bd=BOTTOM)
+            merge(ws, r, 12, r, 13, f, f=font(11, True, NAVY), fl=fill(PAGE), al=CENTER, bd=BOTTOM, nf=F_INT)
+            flag = merge(ws, r, 14, r, 15, f'=IF(ISNUMBER(L{r}),IF(L{r}>{limit},"ACTION","CLEAR"),"ACTION")',
+                         f=font(9, True, "1F2A44"), fl=fill(PAGE), al=CENTER, bd=BOTTOM)
+            go_ = merge(ws, r, 16, r, 17, "Open  ›", f=font(9, True, IN_FONT), fl=fill(PAGE), al=CENTER, bd=BOTTOM)
+            link(go_, sheet)
+        self.status_colors(ws, "N13:O18", {"ACTION": (CRIT_BG, CRIT_FG), "CLEAR": (OK_BG, OK_FG)})
+
+        def tile(r, c, title, desc, sheet, kind):
+            bg, fg = {"entry": (IN_FILL, IN_FONT), "calc": (PAGE, NAVY), "dash": (NAVY, "FFFFFF"),
+                      "setup": (SET_FILL, SET_FONT)}[kind]
+            edge = Side(style="thick", color=CANVAS)
             for rr in (r, r + 1, r + 2):
-                ws.row_dimensions[rr].height = 20 if rr != r + 1 else 32
-            t = merge(ws, r, c, r, c + 3, ("✎  " if entry else "") + title, f=font(11, True, "FFFFFF"),
-                      fl=fill(colr), al=Alignment(vertical="bottom", indent=1))
+                ws.row_dimensions[rr].height = 20 if rr != r + 1 else 30
+            t = merge(ws, r, c, r, c + 3, ("✎  " if kind == "entry" else "") + title, f=font(11, True, fg),
+                      fl=fill(bg), al=Alignment(vertical="bottom", indent=1),
+                      bd=Border(left=edge, right=edge, top=edge))
             link(t, sheet, f"Open {sheet}")
-            dsc = merge(ws, r + 1, c, r + 2, c + 3, desc, f=font(8.5, False, "E8EEFA"), fl=fill(colr),
-                        al=Alignment(vertical="top", wrap_text=True, indent=1))
+            dsc = merge(ws, r + 1, c, r + 2, c + 3, desc, f=font(8.5, False, fg), fl=fill(bg),
+                        al=Alignment(vertical="top", wrap_text=True, indent=1),
+                        bd=Border(left=edge, right=edge, bottom=edge))
             link(dsc, sheet, f"Open {sheet}")
 
-        self.section(ws, 13, 2, 17, "SYSTEM 1  ·  INVENTORY MANAGEMENT")
+        self.section(ws, 20, 2, 17, "SYSTEM 1  ·  INVENTORY MANAGEMENT")
         s1 = [
-            ("CONTROL PANEL", "Thresholds, lead time, order month, pilot dates, lists.", S_CP, "5B6B8C", False),
-            ("INVENTORY MASTER", "Every product with stock %, status and suggested order.", S_MS, NAVY, False),
-            ("WEEKLY COUNT", "Log the weekly physical count here.", S_CL, IN_HDR, True),
-            ("ORDER LIST", "Auto-built purchase list with priority and need-by date.", S_OL, NAVY, False),
+            ("CONTROL PANEL", "Thresholds, lead time, order month, pilot dates, lists.", S_CP, "setup"),
+            ("INVENTORY MASTER", "Every product with stock %, status, expiry and suggested order.", S_MS, "calc"),
+            ("WEEKLY COUNT", "Log the weekly physical count here.", S_CL, "entry"),
+            ("ORDER LIST", "Auto-built purchase list with priority, supplier and cost.", S_OL, "calc"),
+            ("INVENTORY DASHBOARD", "KPIs, status mix, orders by category, expiry watch.", S_ID, "dash"),
+            ("RECEIVING LOG", "Log deliveries; received units are added to stock.", S_RC, "entry"),
+            ("SOURCE DATA", "Product master, suppliers and costs (swap it for another office).", S_SRC, "setup"),
         ]
-        for i, (a, b, s, colr, e) in enumerate(s1):
-            tile(14, 2 + i * 4, a, b, s, colr, e)
-        ws.row_dimensions[17].height = 8
-        tile(18, 2, "INVENTORY DASHBOARD", "KPIs, status mix and order units by category.", S_ID, INK)
-        tile(18, 6, "SOURCE DATA", "Product master (swap this to launch another office).", S_SRC, MUTED)
+        for i, (a, b, sh, k) in enumerate(s1):
+            tile(21 + (i // 4) * 3, 2 + (i % 4) * 4, a, b, sh, k)
 
-        self.section(ws, 22, 2, 17, "SYSTEM 2  ·  60-DAY PANTRY PILOT" if self.pilot_days == 60
+        self.section(ws, 28, 2, 17, "SYSTEM 2  ·  60-DAY PANTRY PILOT" if self.pilot_days == 60
                      else "SYSTEM 2  ·  PANTRY PILOT")
         s2 = [
-            ("PILOT PRODUCTS", "Snacks & beverages in the pantry with usage stats.", S_PP, C_TEAL, False),
-            ("RESTOCK LOG", "Log every refill (date, time, qty).", S_RL, IN_HDR, True),
-            ("FEEDBACK LOG", "Log employee feedback and follow-ups.", S_FB, IN_HDR, True),
-            ("PILOT DASHBOARD", "Leadership view and continue / expand / adjust signal.", S_PD, "0B5E66", False),
+            ("PILOT PRODUCTS", "Snacks & beverages in the pantry with usage stats.", S_PP, "calc"),
+            ("RESTOCK LOG", "Log every refill (date, time, qty).", S_RL, "entry"),
+            ("FEEDBACK LOG", "Log employee feedback and follow-ups.", S_FB, "entry"),
+            ("PILOT DASHBOARD", "Leadership view and continue / expand / adjust signal.", S_PD, "dash"),
         ]
-        for i, (a, b, s, colr, e) in enumerate(s2):
-            tile(23, 2 + i * 4, a, b, s, colr, e)
+        for i, (a, b, sh, k) in enumerate(s2):
+            tile(29, 2 + i * 4, a, b, sh, k)
+        self.section(ws, 33, 2, 17, "OFFICE")
+        tile(34, 2, "TASKS", "Office work with owners, due dates and overdue flags.", S_TK, "entry")
 
-        self.section(ws, 27, 2, 17, "YOUR ROUTINE  (a few entries per week)")
+        self.section(ws, 38, 2, 17, "YOUR ROUTINE  (a few entries per week)")
         steps = [
-            ("1", "Every week", "Weekly Count: one row per product counted — date, product, quantity, "
-                                "your name. Status, usage and the order list update automatically."),
-            ("2", "Every refill", "Restock Log: date, time, product, qty before, qty added, your name. "
-                                  "Cadence and hours-lasted calculate themselves."),
-            ("3", "Any feedback", "Feedback Log: date, type, rating, product, comment, team, follow-up. "
-                                  "Close items by setting Status = Closed and the resolved date."),
-            ("4", "Monthly", "Open Order List, filter Order Flag = ORDER, place the order. "
-                             "Change the order month on the Control Panel."),
+            ("1", "Every week", "Weekly Count: date, product, quantity, your name. Status, usage and the "
+                                "order list update automatically."),
+            ("2", "Each delivery", "Receiving Log: date, product, quantity received. It is added to stock."),
+            ("3", "Every refill", "Restock Log: date, time, product, qty before, qty added, your name."),
+            ("4", "Any feedback", "Feedback Log: type, rating, product, comment, team, follow-up."),
+            ("5", "Monthly", "Order List → filter Order Flag = ORDER and place the order."),
         ]
         for i, (n, a, b) in enumerate(steps):
-            r = 28 + i
-            ws.row_dimensions[r].height = 30
-            style(ws.cell(r, 2, n), f=font(14, True, "FFFFFF"), fl=fill(IN_HDR if i < 3 else NAVY), al=CENTER)
-            merge(ws, r, 3, r, 4, a, f=font(10, True, NAVY), al=LEFT, bd=BOTTOM)
-            merge(ws, r, 5, r, 17, b, f=font(9.5, False, SLATE), al=LEFT, bd=BOTTOM)
-        r = 33
+            r = 39 + i
+            ws.row_dimensions[r].height = 26
+            style(ws.cell(r, 2, n), f=font(12, True, "FFFFFF"), fl=fill(IN_HDR if i < 4 else NAVY), al=CENTER)
+            merge(ws, r, 3, r, 4, a, f=font(10, True, NAVY), fl=fill(PAGE), al=LEFT, bd=BOTTOM)
+            merge(ws, r, 5, r, 17, b, f=font(9.5, False, SLATE), fl=fill(PAGE), al=LEFT, bd=BOTTOM)
+        r = 45
         style(ws.cell(r, 2, ""), fl=fill(IN_FILL), bd=BOX)
         merge(ws, r, 3, r, 7, "Blue = your entries", f=font(9, True, IN_FONT), al=LEFT)
         style(ws.cell(r, 8, ""), fl=fill(SET_FILL), bd=BOX)
         merge(ws, r, 9, r, 12, "Yellow = one-time setup", f=font(9, True, SET_FONT), al=LEFT)
-        style(ws.cell(r, 13, ""), fl=fill(PANEL), bd=BOX)
-        merge(ws, r, 14, r, 17, "White / grey = automatic", f=font(9, True, NAVY), al=LEFT)
+        style(ws.cell(r, 13, ""), fl=fill(PAGE), bd=BOX)
+        merge(ws, r, 14, r, 17, "White = automatic", f=font(9, True, NAVY), al=LEFT)
         self.protect(ws)
 
     # ===================================================================== #
@@ -1675,9 +1831,11 @@ class Hub:
         self.build_restock()
         self.build_feedback()
         self.build_pilot_dash()
+        self.build_receiving()
+        self.build_tasks()
         self.build_engine()
         wb = self.wb
-        order = [S_HOME, S_CP, S_MS, S_CL, S_OL, S_ID, S_PP, S_RL, S_FB, S_PD, S_SRC, S_EN]
+        order = [S_HOME, S_CP, S_MS, S_CL, S_RC, S_OL, S_ID, S_PP, S_RL, S_FB, S_PD, S_TK, S_SRC, S_EN]
         wb._sheets = [self.ws[n] for n in order]
         wb.active = 0
         for ws in wb.worksheets:
@@ -1691,7 +1849,7 @@ class Hub:
             ws.page_margins.left = ws.page_margins.right = 0.4
             if ws.tables:
                 ws.print_title_rows = f"1:{HDR}"
-        for n, rows in [(S_HOME, 34), (S_ID, 76), (S_PD, 70), (S_CP, 45)]:
+        for n, rows in [(S_HOME, 48), (S_ID, 76), (S_PD, 70), (S_CP, 45)]:
             self.ws[n].print_area = f"A1:{col_letter(self.last_col[n])}{rows}"
         wb.calculation.fullCalcOnLoad = True
         wb.properties.title = f"{self.site} Operations Hub"
