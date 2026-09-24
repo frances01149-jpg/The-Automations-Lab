@@ -1,0 +1,71 @@
+# Operations Hub: Inventory + Pantry Pilot workbook
+
+An Excel workbook built to look and work like an app. Every number in it is a formula. It holds two
+separate systems:
+
+| System 1 · Inventory Management | System 2 · Pantry Pilot Tracker (60 days) |
+| --- | --- |
+| Control Panel: thresholds, lead time, order month, pilot dates, lists | Pilot Products: snacks & beverages with usage stats |
+| Inventory Master: stock %, OK / LOW / CRITICAL, suggested order | ✎ Restock Log: refill events, cadence, hours the shelf lasted |
+| ✎ Weekly Count: the weekly physical count | ✎ Feedback Log: employee feedback and follow-ups |
+| Order List: auto purchase list with priority and need-by date | Pilot Dashboard: KPIs, charts, EXPAND / CONTINUE / ADJUST signal |
+| Inventory Dashboard: KPIs, status donut, order units by category | |
+
+The only things anyone types are **blue cells**: counts, refills and feedback. **Yellow cells**
+hold one-time setup. Everything else is locked and calculated.
+
+## Files (`output/`)
+
+| File | Use |
+| --- | --- |
+| `SJUB_Operations_Hub.xlsx` | The live SJUB workbook. Paste the product list into **Source Data**, or rebuild it from the source file (below). |
+| `SJUB_Operations_Hub_DEMO.xlsx` | The same system filled with **sample** products and entries so you can explore it. Not real data. |
+| `Operations_Hub_Template.xltx` | An Excel template. Opening it creates a new, untitled copy for any office. |
+
+## Launching another office or program
+
+Change two things, the source file and the pilot dates:
+
+**Option A: inside Excel (no code)**
+1. Open the template (or any copy) and go to **Source Data**.
+2. Paste *Category, Item Name, Item #, Recent Date Received, PAR Value* from the new source file
+   (values only, no blank rows). It holds up to 300 products.
+3. On the **Control Panel**, set the site name and the pilot start date and duration. Then pick which
+   source categories count as Snack and which count as Beverage.
+
+**Option B: generate it from the source file**
+```bash
+pip install openpyxl
+python ops-hub/build_ops_hub.py --source "SJUB - Inventario.xlsx" --site SJUB \
+       --pilot-start 2026-09-28 --pilot-days 60 --out ops-hub/output/SJUB_Operations_Hub.xlsx
+```
+The script finds the header row by itself and accepts English or Spanish headers. It also
+auto-detects snack and beverage categories; override them with
+`--snack-cats "Snacks,Candy" --beverage-cats "Drinks"`.
+
+Other options: `--order-month 2026-10-01` fixes the order month (by default it follows the report
+date), `--demo` fills the workbook with sample data, and `--xltx` saves it as a template.
+
+## How the automation works
+
+- **Latest count:** each count row gets a per-product sequence number. The Inventory Master reads
+  sequence 1 as the starting qty and the highest sequence as the current stock. Add counts at the
+  bottom, oldest first.
+- **Status:** Stock % = Current ÷ PAR. At or below the critical % the item is CRITICAL; at or below
+  the low % it is LOW; otherwise OK. An item with no count yet shows NO COUNT.
+- **Orders:** Order Qty = max(0, PAR − Current). By default only LOW and CRITICAL items are ordered;
+  a Control Panel switch also tops up OK items. CRITICAL → URGENT (need-by = today + lead time).
+  LOW → STANDARD (need-by = order month + lead time).
+- **Pilot cadence:** for each product, the previous refill timestamp comes from that product's prior
+  event. Days and hours between refills are calculated from it. Log the first placement with
+  Qty Before = 0.
+- **Decision signal:** rules on the Control Panel. EXPAND needs avg rating ≥ 4.2 and ≥ 60 %
+  positive. CONTINUE needs avg rating ≥ 3.5. Anything lower is ADJUST. With fewer than 10 feedback
+  entries the signal reads GATHER MORE DATA.
+- Sheets are protected **without a password** so formulas can't be overwritten by accident
+  (Review → Unprotect Sheet to edit the structure). A hidden `_Engine` sheet holds the helper
+  calculations.
+- Dates, IDs and the as-of logic avoid locale-specific `TEXT()` formats, so the workbook works in
+  English and Spanish Excel alike.
+
+The generator was checked by recalculating every output in LibreOffice: no formula errors.
