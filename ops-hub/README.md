@@ -51,6 +51,7 @@ Change two things, the source file and the pilot dates:
 ```bash
 pip install openpyxl
 python ops-hub/build_ops_hub.py --source "SJUB - Inventario.xlsx" --site SJUB \
+       --staff "Frances Burgos,Maria Del Mar Vargas,Elinor Solivan" \
        --pilot-start 2026-09-28 --pilot-days 60 --out ops-hub/output/SJUB_Operations_Hub.xlsx
 ```
 The script finds the header row by itself, accepts English or Spanish headers and skips section

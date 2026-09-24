@@ -450,7 +450,7 @@ def demo_entries(products, pilot_start, snack_cats, bev_cats):
 # --------------------------------------------------------------------------- #
 class Hub:
     def __init__(self, site, products, pilot_start, pilot_days, order_month,
-                 snack_cats, bev_cats, as_of=None, demo=None):
+                 snack_cats, bev_cats, as_of=None, demo=None, staff=None):
         self.site = site
         self.products = products
         self.pilot_start = pilot_start
@@ -460,6 +460,7 @@ class Hub:
         self.bev_cats = bev_cats
         self.as_of = as_of
         self.demo = demo
+        self.staff = staff or []
         self.wb = Workbook()
         self.ws = {}
         self.names = {}
@@ -746,7 +747,7 @@ class Hub:
         # --- lists (right side) ---------------------------------------------- #
         lists = [
             ("StaffList", 6, "STAFF", "Names for Counted By / Refilled By / Owner",
-             (self.demo or {}).get("staff", [])),
+             self.staff or (self.demo or {}).get("staff", [])),
             ("TeamList", 7, "AREAS / TEAMS", "Used by the Feedback Log",
              (self.demo or {}).get("teams", ["Front Office", "Operations", "Administration"])),
             ("SnackCats", 8, "SNACK CATEGORIES", "Source categories placed in the pantry as Snack",
@@ -1875,6 +1876,8 @@ def main(argv=None):
                     help="Comma-separated source categories that are Snack (default: auto-detect)")
     ap.add_argument("--beverage-cats", default=None,
                     help="Comma-separated source categories that are Beverage (default: auto-detect)")
+    ap.add_argument("--staff", default="",
+                    help='Comma-separated staff names, e.g. "Frances Burgos,Maria Del Mar Vargas"')
     ap.add_argument("--demo", action="store_true", help="Fill with clearly-labelled sample data")
     ap.add_argument("--xltx", action="store_true", help="Save as an Excel template (.xltx)")
     ap.add_argument("--out", type=Path, default=None, help="Output file")
@@ -1902,7 +1905,7 @@ def main(argv=None):
 
     order_month = a.order_month
     hub = Hub(a.site, products, a.pilot_start, a.pilot_days, order_month, snack, bev,
-              as_of=as_of, demo=demo)
+              as_of=as_of, demo=demo, staff=[x.strip() for x in a.staff.split(",") if x.strip()])
     wb = hub.build()
     out = a.out or Path(f"{a.site}_Operations_Hub{'_DEMO' if a.demo else ''}"
                         f"{'.xltx' if a.xltx else '.xlsx'}")
