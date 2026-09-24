@@ -223,6 +223,8 @@ HEADER_KEYS = {
     "received": ["recent date received", "date received", "received",
                  "recibido", "fecha"],
     "par": ["par value", "par level", "par", "nivel par"],
+    "expiration": ["expiration", "expiry", "exp. date", "exp date", "vencimiento",
+                   "caducidad"],
 }
 
 
@@ -242,7 +244,7 @@ def load_source(path: Path):
                 if v is None:
                     continue
                 # most specific keys first so "Item #" is not taken as "name"
-                for key in ("par", "received", "number", "category", "name"):
+                for key in ("par", "expiration", "received", "number", "category", "name"):
                     if key not in cols and _match(v, HEADER_KEYS[key]):
                         if key == "name" and _match(v, HEADER_KEYS["number"]) \
                                 and str(v).strip().lower() != "item":
@@ -258,10 +260,15 @@ def load_source(path: Path):
         sys.exit(f"Could not find a header row with Item Name and PAR in {path}")
     title, rows, hr, cols = best
     out = []
+    section = ""
     for row in rows[hr + 1:]:
         get = lambda k: row[cols[k]] if k in cols and cols[k] < len(row) else None
         name = get("name")
         if name is None or str(name).strip() == "":
+            # a row with text but no item name is a section banner, e.g. "Snacks (...)"
+            texts = [str(v).strip() for v in row if v not in (None, "") and str(v).strip()]
+            if len(texts) == 1:
+                section = texts[0]
             continue
         rec = get("received")
         if isinstance(rec, dt.datetime):
@@ -276,32 +283,50 @@ def load_source(path: Path):
         num = get("number")
         if isinstance(num, float) and num.is_integer():
             num = int(num)
+        if num is not None and str(num).strip() == "":
+            num = None
+        exp = get("expiration")
+        if isinstance(exp, dt.datetime):
+            exp = exp.date()
+        elif isinstance(exp, str):
+            exp = exp.strip() or None
         out.append({
             "category": (str(get("category")).strip() if get("category") else "Uncategorized"),
             "name": str(name).strip(),
             "number": num,
             "received": rec if isinstance(rec, (dt.date, dt.datetime)) else None,
             "par": par,
+            "expiration": exp,
+            "section": section,
         })
     print(f"Loaded {len(out)} products from '{path.name}' / sheet '{title}' "
           f"(header row {hr + 1}; columns: {', '.join(sorted(cols))})")
     return out
 
 
-SNACK_WORDS = ["snack", "botana", "galleta", "cookie", "chip", "candy", "dulce",
-               "granola", "bar", "nut", "cracker", "fruit", "fruta", "pantry"]
+SNACK_WORDS = ["snack", "botana", "galleta", "cookie", "biscuit", "chip", "candy",
+               "dulce", "granola", "nut", "cracker", "pretzel", "popcorn", "fruit",
+               "fruta", "mint"]
 BEV_WORDS = ["beverage", "bebida", "drink", "soda", "water", "agua", "juice",
              "jugo", "coffee", "café", "cafe", "tea", "té", "refresco", "leche"]
 
 
+NOT_BEV_WORDS = ["lid", "cup", "stir", "sweet", "straw"]   # drink supplies, not drinks
+
+
 def guess_pilot_categories(products):
-    cats = []
+    """Snack = categories under a 'Snack' section banner or with snack words;
+    Beverage = categories with drink words (supplies such as lids and cups excluded)."""
+    snack, bev = [], []
     for p in products:
-        if p["category"] not in cats:
-            cats.append(p["category"])
-    snack = [c for c in cats if any(w in c.lower() for w in SNACK_WORDS)
-             and not any(w in c.lower() for w in BEV_WORDS)]
-    bev = [c for c in cats if any(w in c.lower() for w in BEV_WORDS)]
+        c, low = p["category"], p["category"].lower()
+        if c in snack or c in bev:
+            continue
+        is_bev = any(w in low for w in BEV_WORDS) and not any(w in low for w in NOT_BEV_WORDS)
+        if is_bev:
+            bev.append(c)
+        elif "snack" in p.get("section", "").lower() or any(w in low for w in SNACK_WORDS):
+            snack.append(c)
     return snack, bev
 
 
@@ -333,6 +358,8 @@ def demo_products():
                 "category": cat, "name": name, "number": n,
                 "received": dt.date(2026, 9, rnd.randint(1, 20)),
                 "par": rnd.choice([12, 18, 24, 24, 36, 48, 60]),
+                "expiration": dt.date(2026, rnd.randint(10, 12), rnd.randint(1, 28))
+                if cat in ("Snacks", "Beverages") else "N/A",
             })
             n += 1
     return out
@@ -635,6 +662,9 @@ class Hub:
         setting("cfg_Lead", "Supplier lead time (days)", 7, F_INT,
                 "Used to calculate Need-By dates on the order list.",
                 dvs=("whole", "0", "120"))
+        setting("cfg_ExpiryWarn", "Expiry warning window (days)", 30, F_INT,
+                "Items expiring within this many days are flagged EXPIRING.",
+                dvs=("whole", "0", "365"))
         setting("cfg_OrderMonth", "Order month",
                 self.order_month or "=DATE(YEAR(cfg_AsOf),MONTH(cfg_AsOf),1)", F_MONTH,
                 "Defaults to the report month automatically; type a date to plan another month.")
@@ -738,17 +768,17 @@ class Hub:
     # ===================================================================== #
     def build_source(self):
         ws = self.sheet(S_SRC)
-        last = self.widths(ws, [24, 40, 14, 18, 12, 22])
+        last = self.widths(ws, [24, 44, 14, 14, 14, 10, 20])
         self.chrome(ws, S_SRC, "Product master from the source file. To launch another office: "
-                    "clear this table and paste Category, Item Name, Item #, Recent Date Received "
-                    "and PAR Value from the new source file (values only, no blank rows).",
+                    "clear this table and paste Category, Item Name, Item #, Recent Date Received, "
+                    "Expiration Date and PAR Value from the new source file (values only, no blank rows).",
                     last, "SOURCE DATA")
-        heads = ["Category", "Item Name", "Item #", "Recent Date Received", "PAR Value",
-                 "Pilot Type Override"]
+        heads = ["Category", "Item Name", "Item #", "Recent Date Received", "Expiration Date",
+                 "PAR Value", "Pilot Type Override"]
         self.headers(ws, heads, {h: "set" for h in heads})
         r2 = HDR + CAP_PRODUCTS
-        for i, col in enumerate(range(2, 8)):
-            nf = {4: F_DATE, 5: F_INT}.get(col - 1)
+        for i, col in enumerate(range(2, 9)):
+            nf = {4: F_DATE, 5: F_DATE, 6: F_INT}.get(col - 1)
             self.body(ws, col, FIRST, r2, None, nf=nf, kind="set",
                       al=LEFT if col in (2, 3) else CENTER)
         for i, p in enumerate(self.products[:CAP_PRODUCTS]):
@@ -757,12 +787,13 @@ class Hub:
             ws.cell(r, 3, p["name"])
             ws.cell(r, 4, p["number"])
             ws.cell(r, 5, p["received"])
-            ws.cell(r, 6, p["par"])
-        self.dv(ws, f"G{FIRST}:G{r2}", "list", '"Snack,Beverage,Not in Pilot"',
+            ws.cell(r, 6, p.get("expiration"))
+            ws.cell(r, 7, p["par"])
+        self.dv(ws, f"H{FIRST}:H{r2}", "list", '"Snack,Beverage,Not in Pilot"',
                 prompt="Optional. Overrides the category mapping on the Control Panel.",
                 title="Pilot type")
-        self.dv(ws, f"F{FIRST}:F{r2}", "decimal", "0", "1000000")
-        self.table(ws, "tblSource", 2, 7, r2)
+        self.dv(ws, f"G{FIRST}:G{r2}", "decimal", "0", "1000000")
+        self.table(ws, "tblSource", 2, 8, r2)
         ws.freeze_panes = f"A{FIRST}"
         self.name("SrcCount", f"COUNTA('{S_SRC}'!$C${FIRST}:$C${r2})")
 
@@ -776,7 +807,7 @@ class Hub:
         e1, e2 = 2, 1 + n
         heads = {1: "Idx", 2: "Category", 3: "Item Name", 4: "Item #", 5: "Label",
                  6: "Received", 7: "PAR", 8: "CatIdx", 9: "PilotType", 10: "PilotIdx",
-                 11: "WatchScore",
+                 11: "WatchScore", 12: "Expiry", 28: "ExpiryScore",
                  13: "k", 14: "Category", 15: "OrderUnits", 16: "Score", 17: "ItemsToOrder",
                  19: "k", 20: "SrcRow", 21: "PilotLabel", 22: "PilotType", 23: "Units",
                  24: "Score", 26: "FeedbackProducts"}
@@ -795,12 +826,14 @@ class Hub:
             ws.cell(r, 5, f'=IF(C{r}="","",IF(COUNTIF($C${e1}:$C${e2},C{r})>1,'
                           f'C{r}&" (#"&D{r}&")",C{r}))')
             ws.cell(r, 6, f'=IF(OR({S}$C{s}="",{S}E{s}=""),"",{S}E{s})')
-            ws.cell(r, 7, f'=IF(OR({S}$C{s}="",{S}F{s}=""),"",{S}F{s})')
+            ws.cell(r, 7, f'=IF(OR({S}$C{s}="",{S}G{s}=""),"",{S}G{s})')
             ws.cell(r, 8, f'=IF(B{r}="","",IF(COUNTIF($B${e1}:B{r},B{r})=1,MAX($H$1:H{r - 1})+1,""))')
-            ws.cell(r, 9, f'=IF(C{r}="","",IF({S}G{s}="Not in Pilot","",IF({S}G{s}<>"",{S}G{s},'
+            ws.cell(r, 9, f'=IF(C{r}="","",IF({S}H{s}="Not in Pilot","",IF({S}H{s}<>"",{S}H{s},'
                           f'IF(COUNTIF(SnackCats,B{r})>0,"Snack",IF(COUNTIF(BevCats,B{r})>0,"Beverage","")))))')
             ws.cell(r, 10, f'=IF(I{r}="","",COUNTIF($I${e1}:I{r},"Snack")+COUNTIF($I${e1}:I{r},"Beverage"))')
             ws.cell(r, 11, f'=IF(OR({M}J{m}="CRITICAL",{M}J{m}="LOW"),{M}I{m}+A{r}/1000000,"")')
+            ws.cell(r, 12, f'=IF(OR({S}$C{s}="",{S}F{s}=""),"",{S}F{s})')
+            ws.cell(r, 28, f'=IF(ISNUMBER(L{r}),L{r}+A{r}/1000000,"")')
         self.name("Eng_Cat", rng(S_EN, "B", e1, e2))
         self.name("Eng_Name", rng(S_EN, "C", e1, e2))
         self.name("Eng_Item", rng(S_EN, "D", e1, e2))
@@ -808,6 +841,7 @@ class Hub:
         self.name("Eng_PAR", rng(S_EN, "G", e1, e2))
         self.name("Eng_PilotIdx", rng(S_EN, "J", e1, e2))
         self.name("Eng_Watch", rng(S_EN, "K", e1, e2))
+        self.name("Eng_Expiry", rng(S_EN, "AB", e1, e2))
         self.name("ProductList", f"OFFSET('{S_EN}'!$E$2,0,0,MAX(1,SrcCount),1)")
 
         # categories
@@ -855,8 +889,9 @@ class Hub:
         ws = self.sheet(S_MS)
         heads = ["Category", "Item Name", "Item #", "PAR Level", "Starting Qty", "Latest Count",
                  "Current Stock", "Stock %", "Status", "Suggested Order Qty", "Last Count Date",
-                 "Last Received Date", "Counts Logged"]
-        last = self.widths(ws, [20, 34, 11, 10, 11, 11, 11, 14, 12, 13, 15, 15, 10])
+                 "Last Received Date", "Counts Logged", "Expiration Date", "Days to Expiry",
+                 "Expiry Status"]
+        last = self.widths(ws, [20, 34, 11, 10, 11, 11, 11, 14, 12, 13, 15, 15, 10, 14, 10, 12])
         self.chrome(ws, S_MS, "One row per product, built from Source Data. Latest counts are read "
                     "automatically from the Weekly Count log. Status: OK › LOW › CRITICAL using the "
                     "Control Panel thresholds. Nothing on this page is typed by hand.",
@@ -879,22 +914,30 @@ class Hub:
             ("L", '=IF(OR($C{r}="",N{r}=0),"",INDEX(CL_Date,MATCH(' + E + 'E{e}&"|"&N{r},CL_Key,0)))', F_DATE, None),
             ("M", f"={E}F{{e}}", F_DATE, None),
             ("N", '=IF($C{r}="","",COUNTIFS(CL_Prod,' + E + 'E{e},CL_Count,"<>"))', F_INT, None),
+            ("O", f"={E}L{{e}}", F_DATE, None),
+            ("P", '=IF(ISNUMBER(O{r}),O{r}-cfg_AsOf,"")', "0;[Red]-0;0", None),
+            ("Q", '=IF($C{r}="","",IF(NOT(ISNUMBER(O{r})),"N/A",IF(P{r}<0,"EXPIRED",'
+                  'IF(P{r}<=cfg_ExpiryWarn,"EXPIRING","OK"))))', None, None),
         ]
         for letter, f, nf, al in cols:
             c = ord(letter) - 64
             for r in range(FIRST, r2 + 1):
                 cell = ws.cell(r, c, f.format(r=r, e=r - FIRST + 2))
                 style(cell, f=font(10), al=al or CENTER, nf=nf)
-        self.band(ws, 3, 2, 14, FIRST, r2)
+        self.band(ws, 3, 2, 17, FIRST, r2)
+        self.status_colors(ws, f"Q{FIRST}:Q{r2}", {
+            "EXPIRED": (CRIT_BG, CRIT_FG), "EXPIRING": (LOW_BG, LOW_FG), "OK": (OK_BG, OK_FG),
+            "N/A": (NONE_BG, NONE_FG)})
         self.status_colors(ws, f"J{FIRST}:J{r2}", {
             "OK": (OK_BG, OK_FG), "LOW": (LOW_BG, LOW_FG), "CRITICAL": (CRIT_BG, CRIT_FG),
             "NO COUNT": (NONE_BG, NONE_FG), "NO PAR": (NONE_BG, NONE_FG)})
         ws.conditional_formatting.add(f"I{FIRST}:I{r2}", DataBarRule(
             start_type="num", start_value=0, end_type="num", end_value=1, color="8FA9EA"))
-        self.table(ws, "tblInventory", 2, 14, r2)
+        self.table(ws, "tblInventory", 2, 17, r2)
         ws.freeze_panes = f"D{FIRST}"
         for nm, L in [("MS_Name", "C"), ("MS_Status", "J"), ("MS_Stock", "H"), ("MS_PAR", "E"),
-                      ("MS_Pct", "I"), ("MS_Sugg", "K"), ("MS_Cat", "B")]:
+                      ("MS_Pct", "I"), ("MS_Sugg", "K"), ("MS_Cat", "B"), ("MS_Exp", "O"),
+                      ("MS_ExpDays", "P"), ("MS_ExpStatus", "Q")]:
             self.name(nm, rng(S_MS, L, FIRST, r2))
         self.protect(ws)
 
@@ -1088,6 +1131,32 @@ class Hub:
         area = f"P{wr + 2}:Q{wr + 1 + TOP_N}"
         self.status_colors(ws, area, {"LOW": (LOW_BG, LOW_FG), "CRITICAL": (CRIT_BG, CRIT_FG)})
         ws.cell(wr + TOP_N + 2, 2, "No item is LOW or CRITICAL when this list is empty.").font = \
+            font(8.5, False, MUTED, italic=True)
+
+        # expiration watch
+        er = wr + TOP_N + 4
+        self.section(ws, er, 2, 17, '="EXPIRATION WATCH  (soonest first)   ·   "&COUNTIF(MS_ExpStatus,"EXPIRED")'
+                     '&" expired   ·   "&COUNTIF(MS_ExpStatus,"EXPIRING")&" expiring within "&cfg_ExpiryWarn&" days"')
+        eh = [(2, 2, "#"), (3, 6, "Item"), (7, 9, "Category"), (10, 11, "Expiration"),
+              (12, 13, "Days Left"), (14, 15, "On Hand"), (16, 17, "Expiry Status")]
+        for c1, c2, h in eh:
+            merge(ws, er + 1, c1, er + 1, c2, h, f=font(9, True, "FFFFFF"), fl=fill(NAVY), al=CENTER)
+        for k in range(1, TOP_N + 1):
+            r = er + 1 + k
+            style(ws.cell(r, 2, k), f=font(9, False, MUTED), al=CENTER, bd=BOTTOM)
+            idx = f'MATCH(SMALL(Eng_Expiry,B{r}),Eng_Expiry,0)'
+            has = f'COUNT(Eng_Expiry)>=B{r}'
+            merge(ws, r, 3, r, 6, f'=IF({has},INDEX(Eng_Label,{idx}),"")', f=font(10), al=LEFT, bd=BOTTOM)
+            merge(ws, r, 7, r, 9, f'=IF({has},INDEX(MS_Cat,{idx}),"")', f=font(10, False, SLATE), al=LEFT, bd=BOTTOM)
+            merge(ws, r, 10, r, 11, f'=IF({has},INDEX(MS_Exp,{idx}),"")', f=font(10), al=CENTER, bd=BOTTOM, nf=F_DATE)
+            merge(ws, r, 12, r, 13, f'=IF({has},INDEX(MS_ExpDays,{idx}),"")', f=font(10, True), al=CENTER, bd=BOTTOM,
+                  nf="0;[Red]-0;0")
+            merge(ws, r, 14, r, 15, f'=IF({has},INDEX(MS_Stock,{idx}),"")', f=font(10), al=CENTER, bd=BOTTOM, nf=F_INT)
+            merge(ws, r, 16, r, 17, f'=IF({has},INDEX(MS_ExpStatus,{idx}),"")', f=font(10, True), al=CENTER, bd=BOTTOM)
+        self.status_colors(ws, f"P{er + 2}:Q{er + 1 + TOP_N}", {
+            "EXPIRED": (CRIT_BG, CRIT_FG), "EXPIRING": (LOW_BG, LOW_FG), "OK": (OK_BG, OK_FG)})
+        ws.cell(er + TOP_N + 2, 2, "Negative days = already expired. Items marked N/A or "
+                "Not Available in the source have no date and are not listed.").font = \
             font(8.5, False, MUTED, italic=True)
 
         # charts
@@ -1622,7 +1691,7 @@ class Hub:
             ws.page_margins.left = ws.page_margins.right = 0.4
             if ws.tables:
                 ws.print_title_rows = f"1:{HDR}"
-        for n, rows in [(S_HOME, 34), (S_ID, 60), (S_PD, 70), (S_CP, 45)]:
+        for n, rows in [(S_HOME, 34), (S_ID, 76), (S_PD, 70), (S_CP, 45)]:
             self.ws[n].print_area = f"A1:{col_letter(self.last_col[n])}{rows}"
         wb.calculation.fullCalcOnLoad = True
         wb.properties.title = f"{self.site} Operations Hub"

@@ -18,9 +18,10 @@ hold one-time setup. Everything else is locked and calculated.
 
 | File | Use |
 | --- | --- |
-| `SJUB_Operations_Hub.xlsx` | The live SJUB workbook. Paste the product list into **Source Data**, or rebuild it from the source file (below). |
+| `SJUB_Operations_Hub.xlsx` | The live SJUB workbook, loaded with the 44 SJUB products (built from `source/`). |
 | `SJUB_Operations_Hub_DEMO.xlsx` | The same system filled with **sample** products and entries so you can explore it. Not real data. |
 | `Operations_Hub_Template.xltx` | An Excel template. Opening it creates a new, untitled copy for any office. |
+| `source/SJUB - Inventario (transcribed).xlsx` | The SJUB product list, typed in from screenshots of the original file (typos kept as-is). Fix it here and rebuild. |
 
 ## Launching another office or program
 
@@ -28,7 +29,7 @@ Change two things, the source file and the pilot dates:
 
 **Option A: inside Excel (no code)**
 1. Open the template (or any copy) and go to **Source Data**.
-2. Paste *Category, Item Name, Item #, Recent Date Received, PAR Value* from the new source file
+2. Paste *Category, Item Name, Item #, Recent Date Received, Expiration Date, PAR Value* from the new source file
    (values only, no blank rows). It holds up to 300 products.
 3. On the **Control Panel**, set the site name and the pilot start date and duration. Then pick which
    source categories count as Snack and which count as Beverage.
@@ -39,8 +40,10 @@ pip install openpyxl
 python ops-hub/build_ops_hub.py --source "SJUB - Inventario.xlsx" --site SJUB \
        --pilot-start 2026-09-28 --pilot-days 60 --out ops-hub/output/SJUB_Operations_Hub.xlsx
 ```
-The script finds the header row by itself and accepts English or Spanish headers. It also
-auto-detects snack and beverage categories; override them with
+The script finds the header row by itself, accepts English or Spanish headers and skips section
+banner rows such as "Canteen & Kitchen Supplies". It also auto-detects snack and beverage
+categories: every category under a "Snacks" banner counts as Snack, and drink categories such as
+Coffee or Teabags count as Beverage (lids, cups and stirrers do not). Override them with
 `--snack-cats "Snacks,Candy" --beverage-cats "Drinks"`.
 
 Other options: `--order-month 2026-10-01` fixes the order month (by default it follows the report
@@ -56,6 +59,9 @@ date), `--demo` fills the workbook with sample data, and `--xltx` saves it as a 
 - **Orders:** Order Qty = max(0, PAR − Current). By default only LOW and CRITICAL items are ordered;
   a Control Panel switch also tops up OK items. CRITICAL → URGENT (need-by = today + lead time).
   LOW → STANDARD (need-by = order month + lead time).
+- **Expiration:** the Inventory Master shows Days to Expiry and flags each item EXPIRED,
+  EXPIRING (within the Control Panel window, 30 days by default), OK or N/A. The dashboard lists
+  the 10 soonest expirations.
 - **Pilot cadence:** for each product, the previous refill timestamp comes from that product's prior
   event. Days and hours between refills are calculated from it. Log the first placement with
   Qty Before = 0.
