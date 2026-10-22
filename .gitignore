@@ -8,3 +8,6 @@ dist-ssr
 !.env.example
 *.log
 .vite
+
+# day-trader skill working state (plans, orders, portfolio, broker log)
+trader/
